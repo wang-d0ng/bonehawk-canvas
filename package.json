@@ -10,8 +10,8 @@
     "start": "node dist/src/server.js",
     "build": "tsc",
     "desktop:dev": "npm run build && electron .",
-    "desktop:dir": "npm run build && electron-builder --mac --dir --publish never",
-    "desktop:dist": "npm run build && electron-builder --mac dmg zip --publish never",
+    "desktop:dir": "npm run build && electron-builder --config electron-builder.config.cjs --mac --dir --publish never",
+    "desktop:dist": "npm run build && electron-builder --config electron-builder.config.cjs --mac dmg zip --publish never",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -47,39 +47,5 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
-  },
-  "build": {
-    "appId": "com.bonehawk.canvas",
-    "productName": "Bonehawk Canvas",
-    "asar": true,
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "desktop/**/*",
-      "dist/src/**/*",
-      "extension/**/*",
-      "public/**/*",
-      "package.json"
-    ],
-    "mac": {
-      "category": "public.app-category.education",
-      "identity": "-",
-      "hardenedRuntime": false,
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64"
-          ]
-        }
-      ]
-    }
   }
 }

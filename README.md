@@ -73,7 +73,7 @@ Ready for real student use:
 - First-run setup health checks in the app.
 - Local reset for imported Canvas data and uploaded syllabi.
 - Desktop packaging with bundled UI and extension files.
-- GitHub tag release workflow for unsigned macOS builds and extension ZIPs.
+- GitHub tag release workflow for ad-hoc or notarized macOS builds and extension ZIPs.
 
 Still needed before broad public distribution:
 
@@ -83,9 +83,21 @@ Still needed before broad public distribution:
 - Privacy policy and support docs for stored local Canvas data.
 - Windows packaging if non-Mac users are in scope.
 
+### Apple Notarized Releases
+
+The GitHub release workflow is ready to notarize macOS builds once these repository secrets exist:
+
+- `CSC_LINK` - base64 `.p12` Developer ID Application certificate, or another electron-builder supported certificate link.
+- `CSC_KEY_PASSWORD` - password for the signing certificate.
+- `APPLE_API_KEY_P8` - contents of the App Store Connect API key `.p8` file.
+- `APPLE_API_KEY_ID` - App Store Connect key id.
+- `APPLE_API_ISSUER` - App Store Connect issuer id.
+
+When all of those are present, the release workflow sets `BONEHAWK_MAC_SIGN_MODE=developer-id`, uses hardened runtime, and asks electron-builder to notarize. Without those secrets, local and CI builds fall back to ad-hoc signing for development/testing.
+
 ### macOS Download Troubleshooting
 
-If macOS says the app is from an unidentified developer, open it from Finder with Control-click > Open. If a previously downloaded unsigned build says it is damaged, remove the old disk image and download the latest release. For local testing only, quarantine can be cleared with:
+If macOS says Apple could not verify the app is free of malware, the build is not notarized yet. Open it from Finder with Control-click > Open, or clear quarantine for local testing after moving it to Applications:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Bonehawk Canvas.app"
