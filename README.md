@@ -61,7 +61,7 @@ The Electron desktop app wraps the same local Canvas Workbench server in a nativ
 - macOS release build: `npm run desktop:dist`
 - Output directory: `release/`
 
-Desktop data is stored in the app user-data folder, not in the packaged app. The release build currently targets macOS Apple Silicon and is unsigned, so macOS may require opening it through Finder's security prompt the first time.
+Desktop data is stored in the app user-data folder, not in the packaged app. The release build currently targets macOS Apple Silicon and is ad-hoc signed, so macOS may require opening it through Finder's security prompt the first time.
 
 The extension guide and extension files are bundled into desktop builds. Use the in-app setup card to open the guide, check sync health, and reset local Canvas/syllabus data when testing.
 
@@ -82,6 +82,14 @@ Still needed before broad public distribution:
 - Auto-update signing/channel setup.
 - Privacy policy and support docs for stored local Canvas data.
 - Windows packaging if non-Mac users are in scope.
+
+### macOS Download Troubleshooting
+
+If macOS says the app is from an unidentified developer, open it from Finder with Control-click > Open. If a previously downloaded unsigned build says it is damaged, remove the old disk image and download the latest release. For local testing only, quarantine can be cleared with:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Bonehawk Canvas.app"
+```
 
 ## API
 
