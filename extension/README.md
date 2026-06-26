@@ -4,7 +4,7 @@ This is the no-admin sync path.
 
 Students do not need a Canvas Developer Key or personal API token. They:
 
-1. Start Canvas Workbench locally at `http://localhost:3000`.
+1. Open the Bonehawk Canvas desktop app, or start Canvas Workbench locally at `http://localhost:3000`.
 2. Open Chrome or Edge.
 3. Go to `chrome://extensions`.
 4. Enable **Developer mode**.
@@ -14,6 +14,6 @@ Students do not need a Canvas Developer Key or personal API token. They:
 8. Click the Canvas Workbench Sync extension button.
 9. Click **Sync Canvas to Workbench**.
 
-The extension reads Canvas through the student’s existing browser session and sends courses, syllabi, assignments, due dates, and submission metadata to the local Workbench API.
+The extension reads Canvas through the student’s existing browser session and sends courses, syllabi, assignments, due dates, and submission metadata to the local Workbench API at `http://localhost:3000`.
 
 It does not ask for, store, or transmit the student’s Canvas password.

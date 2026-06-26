@@ -96,7 +96,7 @@ async function startBundledServer() {
   const appPath = app.getAppPath();
   const userData = app.getPath("userData");
   process.env.CANVAS_BASE_URL ||= "https://canvas.instructure.com";
-  process.env.PORT = "0";
+  process.env.PORT = "3000";
   process.env.ALLOWED_ORIGINS ||= "http://localhost:3000,http://127.0.0.1:3000";
   process.env.TOKEN_STORE_PATH ||= path.join(userData, "canvas-oauth-tokens.json");
   process.env.IMPORT_STORE_PATH ||= path.join(userData, "imported-canvas-snapshot.json");
@@ -110,8 +110,8 @@ async function startBundledServer() {
 
   return startCanvasBotServer({
     env,
-    port: 0,
-    host: "127.0.0.1",
+    port: 3000,
+    host: "localhost",
     publicDir: path.join(appPath, "public"),
     enableScheduler: false
   });

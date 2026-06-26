@@ -1,6 +1,6 @@
 {
   "name": "canvas-assignment-bot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Instructure Canvas assignment bot API for daily task reports and assignment guidance.",
   "author": "Bonehawk Canvas",
   "type": "module",

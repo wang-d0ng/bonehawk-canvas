@@ -67,7 +67,7 @@ export function createApp(options: CreateAppOptions) {
   app.use(
     cors({
       origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (isAllowedOrigin(origin, allowedOrigins)) {
           callback(null, true);
           return;
         }
@@ -417,6 +417,16 @@ export function createApp(options: CreateAppOptions) {
   });
 
   return app;
+}
+
+function isAllowedOrigin(origin: string | undefined, allowedOrigins: string[]): boolean {
+  if (!origin || allowedOrigins.includes(origin)) return true;
+
+  return (
+    /^https:\/\/[a-z0-9.-]+\.instructure\.com$/i.test(origin) ||
+    /^chrome-extension:\/\/[a-p]{32}$/i.test(origin) ||
+    /^moz-extension:\/\/[0-9a-f-]+$/i.test(origin)
+  );
 }
 
 function asyncHandler(

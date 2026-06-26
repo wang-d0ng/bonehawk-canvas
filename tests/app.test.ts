@@ -629,6 +629,24 @@ describe("createApp", () => {
     expect(response.body.code).toBe("CORS_FORBIDDEN");
   });
 
+  it("allows Canvas school origins for no-admin extension sync", async () => {
+    const response = await request(createTestApp())
+      .get("/health")
+      .set("Origin", "https://templeu.instructure.com")
+      .expect(200);
+
+    expect(response.headers["access-control-allow-origin"]).toBe("https://templeu.instructure.com");
+  });
+
+  it("allows browser extension origins for no-admin extension sync", async () => {
+    const response = await request(createTestApp())
+      .get("/health")
+      .set("Origin", "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+      .expect(200);
+
+    expect(response.headers["access-control-allow-origin"]).toBe("chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  });
+
   it("returns a generic error for unexpected failures", async () => {
     const app = createTestApp({
       taskService: {
