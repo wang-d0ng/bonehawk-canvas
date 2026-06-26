@@ -345,6 +345,7 @@ svg {
 .setup-card,
 .hero-grid,
 .course-strip,
+.overview-tabs,
 .grid,
 .layout,
 .helper,
@@ -361,6 +362,7 @@ svg {
 }
 
 .grid,
+.overview-panel,
 .layout,
 .helper,
 .columns,
@@ -377,6 +379,38 @@ svg {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(5, 6, 7, 0.38);
+}
+
+.overview-tabs {
+  display: inline-flex !important;
+  width: max-content;
+  max-width: calc(100% - 44px);
+  overflow-x: auto;
+  gap: 4px !important;
+  padding: 5px !important;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(5, 6, 7, 0.48);
+}
+
+.overview-tabs button {
+  min-width: 116px;
+  background: transparent !important;
+  color: var(--muted) !important;
+}
+
+.overview-tabs button.active {
+  border-color: rgba(152, 255, 182, 0.58) !important;
+  background: rgba(152, 255, 182, 0.1) !important;
+  color: var(--green) !important;
+}
+
+.overview-panel[hidden] {
+  display: none !important;
+}
+
+.overview-panel.active {
+  display: grid !important;
 }
 
 .columns {
@@ -762,7 +796,9 @@ button:hover {
 .field,
 select,
 textarea,
-input[type="search"] {
+input[type="search"],
+input[type="text"],
+input[type="file"] {
   min-height: 36px !important;
   border: 2px solid var(--line) !important;
   border-radius: 3px !important;
@@ -786,10 +822,123 @@ textarea::placeholder {
 .field:focus,
 select:focus,
 textarea:focus,
-input[type="search"]:focus {
+input[type="search"]:focus,
+input[type="text"]:focus,
+input[type="file"]:focus {
   outline: none !important;
   border-color: var(--green) !important;
   box-shadow: 0 0 0 2px rgba(152, 255, 182, 0.16) !important;
+}
+
+.syllabus-upload {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.syllabus-upload label {
+  display: grid;
+  gap: 6px;
+}
+
+.syllabus-upload label > span {
+  color: var(--muted);
+  font: 850 11px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.syllabus-upload .wide,
+.upload-actions {
+  grid-column: 1 / -1;
+}
+
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+#syllabusState {
+  color: var(--green);
+  font-size: 12px;
+}
+
+.syllabus-list {
+  display: grid;
+  gap: 8px;
+}
+
+.uploaded-syllabus .button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.calendar-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.calendar-event {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.28fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(21, 27, 24, 0.9), rgba(14, 18, 17, 0.9));
+  box-shadow: 0 0 0 1px rgba(152, 255, 182, 0.07), var(--shadow-soft);
+}
+
+.calendar-event time {
+  color: var(--amber);
+  font: 850 11px/1.35 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.calendar-event time span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.calendar-event strong {
+  color: var(--ink);
+  display: block;
+  font-size: 13px;
+}
+
+.calendar-event span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.calendar-event em {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--green);
+  font: 850 10px/1 var(--font-mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-style: normal;
+}
+
+.calendar-event.danger {
+  border-color: rgba(255, 92, 100, 0.52);
+}
+
+.calendar-event.info em {
+  color: var(--blue);
 }
 
 .filters {
@@ -1167,6 +1316,7 @@ pre,
   .setup-card,
   .hero-grid,
   .course-strip,
+  .overview-tabs,
   .grid,
   .layout,
   .helper,
@@ -1195,6 +1345,20 @@ pre,
   }
 
   .setup-card .setup-row {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-tabs {
+    width: auto;
+    max-width: none;
+  }
+
+  .overview-tabs button {
+    min-width: max-content;
+  }
+
+  .syllabus-upload,
+  .calendar-event {
     grid-template-columns: 1fr;
   }
 }

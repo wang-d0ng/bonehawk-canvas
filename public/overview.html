@@ -137,7 +137,13 @@
         </div>
       </header>
 
-      <section class="grid">
+      <div class="overview-tabs" role="tablist" aria-label="Overview views">
+        <button class="active" type="button" role="tab" aria-selected="true" data-overview-tab="report">Report</button>
+        <button type="button" role="tab" aria-selected="false" data-overview-tab="calendar">Calendar</button>
+        <button type="button" role="tab" aria-selected="false" data-overview-tab="syllabi">Syllabi</button>
+      </div>
+
+      <section class="grid overview-panel active" data-overview-panel="report">
         <div class="panel span-8">
           <h3>Open work</h3>
           <div class="bot-strip" aria-label="Report generation pipeline">
@@ -186,6 +192,59 @@
           <button class="button secondary" id="preview">Preview email copy</button>
           <pre id="previewText" style="white-space:pre-wrap; margin:14px 0 0; color:var(--muted); font:13px/1.5 var(--font-mono);">Loading report...</pre>
         </div>
+      </section>
+
+      <section class="grid overview-panel" data-overview-panel="calendar" hidden>
+        <div class="panel span-8">
+          <h3>Calendar</h3>
+          <p class="lead">Dated open work from the selected classes, sorted by deadline.</p>
+          <div class="calendar-list" id="calendarList" aria-live="polite">
+            <div class="calendar-event"><time>Loading</time><div><strong>Reading Canvas dates</strong><span>Calendar will fill in after the current sync is read.</span></div></div>
+          </div>
+        </div>
+        <aside class="panel span-4">
+          <h3>Calendar rules</h3>
+          <div class="syllabus">
+            <div class="mention"><b>Open work only</b><p>Completed assignments stay out of this calendar.</p></div>
+            <div class="mention"><b>Focus aware</b><p>The calendar follows the class choices configured on the homepage.</p></div>
+            <div class="mention"><b>Syllabus backup</b><p>Uploaded syllabi appear as reference notes in the report tab.</p></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="grid overview-panel" data-overview-panel="syllabi" hidden>
+        <div class="panel span-8">
+          <h3>Upload syllabi</h3>
+          <p class="lead">Add pasted syllabus text or a text, Markdown, or HTML syllabus file. The app will reference it when building reports.</p>
+          <form class="syllabus-upload" id="syllabusUpload">
+            <label>
+              <span>Title</span>
+              <input id="syllabusTitle" name="title" type="text" placeholder="Biology syllabus" autocomplete="off" required />
+            </label>
+            <label>
+              <span>Class</span>
+              <input id="syllabusCourse" name="courseName" type="text" placeholder="Biology 104" autocomplete="off" />
+            </label>
+            <label class="wide">
+              <span>File</span>
+              <input id="syllabusFile" type="file" accept=".txt,.md,.markdown,.html,.htm,text/plain,text/markdown,text/html" />
+            </label>
+            <label class="wide">
+              <span>Syllabus text</span>
+              <textarea id="syllabusText" name="text" rows="10" placeholder="Paste syllabus text here..." required></textarea>
+            </label>
+            <div class="upload-actions">
+              <button class="button" type="submit">Save syllabus</button>
+              <span id="syllabusState" aria-live="polite">No syllabus uploaded yet.</span>
+            </div>
+          </form>
+        </div>
+        <aside class="panel span-4">
+          <h3>Reference library</h3>
+          <div class="syllabus-list" id="syllabusList" aria-live="polite">
+            <div class="mention"><b>Loading</b><p>Saved syllabi will appear here.</p></div>
+          </div>
+        </aside>
       </section>
     </main>
   </div>

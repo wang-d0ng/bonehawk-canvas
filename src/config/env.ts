@@ -24,6 +24,7 @@ export const envSchema = z.object({
   OAUTH_STATE_SECRET: optionalSecretSchema,
   TOKEN_STORE_PATH: z.string().default(".data/canvas-oauth-tokens.json"),
   IMPORT_STORE_PATH: z.string().default(".data/imported-canvas-snapshot.json"),
+  SYLLABUS_STORE_PATH: z.string().default(".data/uploaded-syllabi.json"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DAILY_REPORT_CRON: z.string().default("0 7 * * *"),
   REPORT_CHANNEL: z.enum(["console", "email"]).default("console"),

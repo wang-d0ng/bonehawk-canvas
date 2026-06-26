@@ -9,6 +9,7 @@ import { FileImportedCanvasStore } from "./import/importedCanvasStore.js";
 import { startDailyReportScheduler } from "./scheduler/dailyReportScheduler.js";
 import { AssignmentSupportService } from "./services/assignmentSupportService.js";
 import { CanvasTaskService } from "./services/canvasTaskService.js";
+import { FileUploadedSyllabusStore } from "./syllabi/uploadedSyllabusStore.js";
 
 const env = loadEnv();
 const canvasClient = new CanvasClient({
@@ -19,6 +20,7 @@ const taskService = new CanvasTaskService(canvasClient);
 const supportService = new AssignmentSupportService(canvasClient);
 const reporter = createReporter(env);
 const importedCanvasStore = new FileImportedCanvasStore(env.IMPORT_STORE_PATH);
+const uploadedSyllabusStore = new FileUploadedSyllabusStore(env.SYLLABUS_STORE_PATH);
 const authService = env.CANVAS_CLIENT_ID
   ? new CanvasOAuthService(
       {
@@ -30,7 +32,15 @@ const authService = env.CANVAS_CLIENT_ID
       new FileTokenStore(env.TOKEN_STORE_PATH)
     )
   : undefined;
-const app = createApp({ env, taskService, supportService, reporter, authService, importedCanvasStore });
+const app = createApp({
+  env,
+  taskService,
+  supportService,
+  reporter,
+  authService,
+  importedCanvasStore,
+  uploadedSyllabusStore
+});
 
 app.listen(env.PORT, () => {
   console.log(`Canvas bot API listening on http://localhost:${env.PORT}`);

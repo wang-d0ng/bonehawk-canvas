@@ -5,6 +5,7 @@ import { CanvasOAuthService } from "../src/auth/canvasOAuthService.js";
 import { MemoryTokenStore } from "../src/auth/tokenStore.js";
 import { MemoryImportedCanvasStore, type ImportedCanvasSnapshot } from "../src/import/importedCanvasStore.js";
 import type { Reporter } from "../src/reporters/reporter.js";
+import { MemoryUploadedSyllabusStore } from "../src/syllabi/uploadedSyllabusStore.js";
 
 describe("createApp", () => {
   it("returns health status", async () => {
@@ -401,6 +402,84 @@ describe("createApp", () => {
       totalTasks: 1,
       dueToday: 1
     });
+  });
+
+  it("serves calendar events from focused open Canvas work", async () => {
+    const response = await request(createTestApp())
+      .get("/api/calendar?date=2026-06-25")
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.events).toEqual([
+      expect.objectContaining({
+        id: "1:3",
+        title: "Field Notes",
+        courseName: "Biology",
+        startsAt: "2026-06-27T20:00:00.000Z",
+        type: "assignment"
+      })
+    ]);
+  });
+
+  it("stores uploaded syllabi and folds them into daily reports", async () => {
+    const uploadedSyllabusStore = new MemoryUploadedSyllabusStore();
+    const app = createTestApp({ uploadedSyllabusStore });
+
+    const upload = await request(app)
+      .post("/api/syllabi")
+      .send({
+        title: "Biology syllabus",
+        courseName: "Biology",
+        text: "Final portfolio project due 6/30. Quiz review opens next week."
+      })
+      .expect(200);
+    const list = await request(app).get("/api/syllabi").expect(200);
+    const report = await request(app).get("/api/report/daily?date=2026-06-25").expect(200);
+
+    expect(upload.body.data).toMatchObject({
+      title: "Biology syllabus",
+      courseName: "Biology"
+    });
+    expect(list.body.data).toHaveLength(1);
+    expect(report.body.data.sections.syllabusMentions).toEqual([
+      expect.objectContaining({
+        id: `uploaded-syllabus-${upload.body.data.id}-0`,
+        courseName: "Biology",
+        text: "Biology syllabus: Final portfolio project due 6/30."
+      }),
+      expect.objectContaining({
+        id: `uploaded-syllabus-${upload.body.data.id}-1`,
+        courseName: "Biology",
+        text: "Biology syllabus: Quiz review opens next week."
+      })
+    ]);
+  });
+
+  it("rejects invalid uploaded syllabi", async () => {
+    const app = createTestApp({
+      uploadedSyllabusStore: new MemoryUploadedSyllabusStore()
+    });
+
+    const response = await request(app)
+      .post("/api/syllabi")
+      .send({ title: "", text: "" })
+      .expect(400);
+
+    expect(response.body.code).toBe("INVALID_SYLLABUS");
+  });
+
+  it("deletes uploaded syllabi", async () => {
+    const uploadedSyllabusStore = new MemoryUploadedSyllabusStore();
+    const app = createTestApp({ uploadedSyllabusStore });
+    const upload = await request(app)
+      .post("/api/syllabi")
+      .send({ title: "Old syllabus", text: "Essay due 7/1." })
+      .expect(200);
+
+    await request(app).delete(`/api/syllabi/${upload.body.data.id}`).expect(200);
+
+    const list = await request(app).get("/api/syllabi").expect(200);
+    expect(list.body.data).toEqual([]);
   });
 
   it("lists courses without exposing credentials", async () => {

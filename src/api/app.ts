@@ -13,6 +13,8 @@ import type { Reporter } from "../reporters/reporter.js";
 import { AssignmentSupportService } from "../services/assignmentSupportService.js";
 import { CanvasTaskService, type CanvasSnapshot } from "../services/canvasTaskService.js";
 import { buildAssignmentTasks, buildDailyReport, type AssignmentTask, type DailyReport } from "../services/taskPlanner.js";
+import { buildUploadedSyllabusMentions } from "../syllabi/uploadedSyllabusReferences.js";
+import { uploadedSyllabusInputSchema, type UploadedSyllabusStore } from "../syllabi/uploadedSyllabusStore.js";
 import { createRateLimiter } from "./rateLimiter.js";
 
 export interface CreateAppOptions {
@@ -29,6 +31,7 @@ export interface CreateAppOptions {
   supportService: AssignmentSupportService;
   reporter: Reporter;
   importedCanvasStore?: ImportedCanvasStore;
+  uploadedSyllabusStore?: UploadedSyllabusStore;
   authService?: CanvasOAuthService;
   now?: () => Date;
 }
@@ -191,14 +194,15 @@ export function createApp(options: CreateAppOptions) {
     const { taskService } = createRequestServices(request, options);
     const reportDate = parseReportDate(request.query.date, now());
     const focusedCourseIds = parseCourseIds(request.query.courseIds);
+    let report: DailyReport;
     if (!focusedCourseIds) {
-      response.json({ success: true, data: await taskService.buildDailyReport(reportDate) });
-      return;
+      report = await taskService.buildDailyReport(reportDate);
+    } else {
+      const snapshot = filterSnapshotByCourseIds(await taskService.loadSnapshot(), focusedCourseIds);
+      report = buildDailyReportFromSnapshot(snapshot, reportDate);
     }
 
-    const snapshot = filterSnapshotByCourseIds(await taskService.loadSnapshot(), focusedCourseIds);
-    const report = buildDailyReportFromSnapshot(snapshot, reportDate);
-    response.json({ success: true, data: report });
+    response.json({ success: true, data: await withUploadedSyllabusMentions(report, options) });
   }));
 
   app.get("/api/dashboard", asyncHandler(async (request, response) => {
@@ -207,7 +211,7 @@ export function createApp(options: CreateAppOptions) {
     const focusedCourseIds = parseCourseIds(request.query.courseIds);
     const fullSnapshot = await taskService.loadSnapshot();
     const focusedSnapshot = filterSnapshotByCourseIds(fullSnapshot, focusedCourseIds);
-    const report = buildDailyReportFromSnapshot(focusedSnapshot, reportDate);
+    const report = await withUploadedSyllabusMentions(buildDailyReportFromSnapshot(focusedSnapshot, reportDate), options);
     const tasks = visibleTasks(buildAssignmentTasks(focusedSnapshot.courses, focusedSnapshot.assignmentsByCourse, reportDate));
 
     response.json({
@@ -231,6 +235,58 @@ export function createApp(options: CreateAppOptions) {
     });
   }));
 
+  app.get("/api/calendar", asyncHandler(async (request, response) => {
+    const { taskService } = createRequestServices(request, options);
+    const reportDate = parseReportDate(request.query.date, now());
+    const focusedCourseIds = parseCourseIds(request.query.courseIds);
+    const report = focusedCourseIds
+      ? buildDailyReportFromSnapshot(
+          filterSnapshotByCourseIds(await taskService.loadSnapshot(), focusedCourseIds),
+          reportDate
+        )
+      : await taskService.buildDailyReport(reportDate);
+    const reportWithUploads = await withUploadedSyllabusMentions(report, options);
+
+    response.json({
+      success: true,
+      data: {
+        generatedAt: reportWithUploads.generatedAt,
+        reportDate: reportWithUploads.reportDate,
+        events: buildCalendarEvents(reportWithUploads)
+      }
+    });
+  }));
+
+  app.get("/api/syllabi", asyncHandler(async (_request, response) => {
+    response.json({ success: true, data: await listUploadedSyllabi(options) });
+  }));
+
+  app.post("/api/syllabi", asyncHandler(async (request, response) => {
+    if (!options.uploadedSyllabusStore) {
+      throw new ApiError(501, "Syllabus uploads are not configured.", "SYLLABUS_UPLOAD_NOT_CONFIGURED");
+    }
+
+    const parsed = uploadedSyllabusInputSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new ApiError(400, "Add a title and syllabus text before uploading.", "INVALID_SYLLABUS");
+    }
+
+    response.json({ success: true, data: await options.uploadedSyllabusStore.add(parsed.data) });
+  }));
+
+  app.delete("/api/syllabi/:id", asyncHandler(async (request, response) => {
+    if (!options.uploadedSyllabusStore) {
+      throw new ApiError(501, "Syllabus uploads are not configured.", "SYLLABUS_UPLOAD_NOT_CONFIGURED");
+    }
+
+    const id = firstParam(request.params.id);
+    if (!isUuid(id)) {
+      throw new ApiError(400, "Syllabus id is invalid.", "INVALID_SYLLABUS_ID");
+    }
+
+    response.json({ success: true, data: { deleted: await options.uploadedSyllabusStore.remove(id) } });
+  }));
+
   app.post("/api/report/daily/send", asyncHandler(async (request, response) => {
     const { taskService } = createRequestServices(request, options);
     const reportDate = parseReportDate(request.body?.date, now());
@@ -241,7 +297,7 @@ export function createApp(options: CreateAppOptions) {
           reportDate
         )
       : await taskService.buildDailyReport(reportDate);
-    await options.reporter.sendDailyReport(report);
+    await options.reporter.sendDailyReport(await withUploadedSyllabusMentions(report, options));
     response.json({ success: true, data: { sent: true, reportDate: report.reportDate } });
   }));
 
@@ -380,6 +436,48 @@ function visibleTasks<T extends { status?: string }>(tasks: T[]): T[] {
   return tasks.filter((task) => task.status !== "completed");
 }
 
+async function withUploadedSyllabusMentions(
+  report: DailyReport,
+  options: CreateAppOptions
+): Promise<DailyReport> {
+  const uploadedSyllabi = await listUploadedSyllabi(options);
+  const uploadedMentions = buildUploadedSyllabusMentions(uploadedSyllabi);
+  if (uploadedMentions.length === 0) return report;
+
+  return {
+    ...report,
+    sections: {
+      ...report.sections,
+      syllabusMentions: [...report.sections.syllabusMentions, ...uploadedMentions]
+    }
+  };
+}
+
+async function listUploadedSyllabi(options: CreateAppOptions) {
+  return options.uploadedSyllabusStore?.list() ?? [];
+}
+
+function buildCalendarEvents(report: DailyReport) {
+  return [
+    ...report.sections.overdue,
+    ...report.sections.dueToday,
+    ...report.sections.upcoming
+  ]
+    .filter((task) => task.dueAt)
+    .map((task) => ({
+      id: task.id,
+      type: "assignment" as const,
+      title: task.title,
+      courseName: task.courseName,
+      startsAt: task.dueAt,
+      status: task.status,
+      priority: task.priority,
+      estimatedMinutes: task.estimatedMinutes,
+      action: task.action,
+      canvasUrl: task.canvasUrl
+    }));
+}
+
 function parseAssignmentParams(request: Request): { courseId: number; assignmentId: number } {
   const courseParam = firstParam(request.params.courseId);
   const assignmentParam = firstParam(request.params.assignmentId);
@@ -396,6 +494,10 @@ function parseAssignmentParams(request: Request): { courseId: number; assignment
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function isPayloadTooLarge(error: unknown): boolean {

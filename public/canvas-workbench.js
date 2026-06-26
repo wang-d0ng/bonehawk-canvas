@@ -17,6 +17,13 @@
       const body = await response.json();
       if (!body.success) throw new Error(body.error || "Request failed");
       return body.data;
+    },
+    async delete(path) {
+      const response = await fetch(path, { method: "DELETE", headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+      const body = await response.json();
+      if (!body.success) throw new Error(body.error || "Request failed");
+      return body.data;
     }
   };
 
@@ -30,6 +37,9 @@
     hydrateAuthStatus();
     hydrateHome();
     hydrateOverview();
+    hydrateOverviewTabs();
+    hydrateCalendar();
+    hydrateSyllabi();
     hydrateAssignments();
     hydrateTodo();
     hydrateDoItForMe();
@@ -236,6 +246,90 @@
     });
   }
 
+  function hydrateOverviewTabs() {
+    const tabs = Array.from(document.querySelectorAll("[data-overview-tab]"));
+    const panels = Array.from(document.querySelectorAll("[data-overview-panel]"));
+    if (tabs.length === 0 || panels.length === 0) return;
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const view = tab.dataset.overviewTab;
+        tabs.forEach((entry) => {
+          const active = entry === tab;
+          entry.classList.toggle("active", active);
+          entry.setAttribute("aria-selected", String(active));
+        });
+        panels.forEach((panel) => {
+          const active = panel.dataset.overviewPanel === view;
+          panel.classList.toggle("active", active);
+          panel.hidden = !active;
+        });
+      });
+    });
+  }
+
+  async function hydrateCalendar() {
+    const root = document.querySelector("#calendarList");
+    if (!root) return;
+
+    try {
+      const calendar = await api.get(withFocus("/api/calendar"));
+      renderCalendar(calendar.events || []);
+    } catch (error) {
+      root.innerHTML = `<div class="calendar-event"><time>Setup</time><div><strong>Sync Canvas first</strong><span>Calendar dates will appear after the app can read Canvas.</span></div></div>`;
+    }
+  }
+
+  async function hydrateSyllabi() {
+    const form = document.querySelector("#syllabusUpload");
+    const list = document.querySelector("#syllabusList");
+    if (!form || !list) return;
+
+    await renderUploadedSyllabi();
+
+    const fileInput = document.querySelector("#syllabusFile");
+    if (fileInput && fileInput.dataset.wired !== "true") {
+      fileInput.dataset.wired = "true";
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        setText(document.querySelector("#syllabusState"), "Reading syllabus file...");
+        try {
+          const text = await file.text();
+          const title = document.querySelector("#syllabusTitle");
+          const textarea = document.querySelector("#syllabusText");
+          if (title && !title.value) title.value = file.name.replace(/\.[^.]+$/, "");
+          if (textarea) textarea.value = text;
+          setText(document.querySelector("#syllabusState"), "File loaded. Review the text, then save.");
+        } catch (error) {
+          setText(document.querySelector("#syllabusState"), "Could not read that file. Paste the syllabus text instead.");
+        }
+      });
+    }
+
+    if (form.dataset.wired !== "true") {
+      form.dataset.wired = "true";
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const title = document.querySelector("#syllabusTitle")?.value?.trim() || "";
+        const courseName = document.querySelector("#syllabusCourse")?.value?.trim() || undefined;
+        const text = document.querySelector("#syllabusText")?.value?.trim() || "";
+        setText(document.querySelector("#syllabusState"), "Saving syllabus...");
+
+        try {
+          await api.post("/api/syllabi", { title, courseName, text });
+          form.reset();
+          setText(document.querySelector("#syllabusState"), "Syllabus saved and available to reports.");
+          await renderUploadedSyllabi();
+          await hydrateOverview();
+          await hydrateCalendar();
+        } catch (error) {
+          setText(document.querySelector("#syllabusState"), "Add a title and syllabus text before saving.");
+        }
+      });
+    }
+  }
+
   async function hydrateAssignments() {
     const table = document.querySelector("#assignmentTable");
     if (!table) return;
@@ -338,6 +432,70 @@
       const flag = task.status === "overdue" || task.status === "missing" ? "danger" : task.status === "upcoming" ? "info" : "";
       return `<div class="task"><span class="flag ${flag}"></span><div><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(task.courseName)} - ${escapeHtml(task.action)}</span></div><span class="time">${task.estimatedMinutes} min</span></div>`;
     }).join("");
+  }
+
+  function renderCalendar(events) {
+    const root = document.querySelector("#calendarList");
+    if (!root) return;
+
+    if (events.length === 0) {
+      root.innerHTML = `<div class="calendar-event"><time>Clear</time><div><strong>No dated open work</strong><span>The selected classes do not have open assignments with due dates right now.</span></div></div>`;
+      return;
+    }
+
+    root.innerHTML = events.map((event) => {
+      const date = event.startsAt ? formatDate(event.startsAt) : "No date";
+      const time = event.startsAt ? formatTime(event.startsAt) : "";
+      const urgent = event.status === "overdue" || event.status === "missing" ? "danger" : event.status === "upcoming" ? "info" : "";
+      return `
+        <div class="calendar-event ${urgent}">
+          <time>${escapeHtml(date)}${time ? `<span>${escapeHtml(time)}</span>` : ""}</time>
+          <div>
+            <strong>${escapeHtml(event.title)}</strong>
+            <span>${escapeHtml(event.courseName)} - ${escapeHtml(event.action)}</span>
+          </div>
+          <em>${escapeHtml(event.priority)}</em>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function renderUploadedSyllabi() {
+    const root = document.querySelector("#syllabusList");
+    if (!root) return;
+
+    try {
+      const syllabi = await api.get("/api/syllabi");
+      if (syllabi.length === 0) {
+        root.innerHTML = `<div class="mention"><b>No uploaded syllabi</b><p>Add one to let the report catch dates and tasks that are not in Canvas assignments yet.</p></div>`;
+        return;
+      }
+
+      root.innerHTML = syllabi.map((syllabus) => `
+        <div class="mention uploaded-syllabus">
+          <b>${escapeHtml(syllabus.title)}</b>
+          <p>${escapeHtml(syllabus.courseName || "No class label")} - uploaded ${escapeHtml(formatDate(syllabus.uploadedAt))}</p>
+          <button class="button secondary" type="button" data-delete-syllabus="${escapeAttr(syllabus.id)}">Remove</button>
+        </div>
+      `).join("");
+
+      root.querySelectorAll("[data-delete-syllabus]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          try {
+            await api.delete(`/api/syllabi/${encodeURIComponent(button.dataset.deleteSyllabus)}`);
+            setText(document.querySelector("#syllabusState"), "Syllabus removed.");
+            await renderUploadedSyllabi();
+            await hydrateOverview();
+          } catch (error) {
+            button.disabled = false;
+            setText(document.querySelector("#syllabusState"), "Could not remove that syllabus.");
+          }
+        });
+      });
+    } catch (error) {
+      root.innerHTML = `<div class="mention"><b>Syllabus library unavailable</b><p>Restart the app and try again.</p></div>`;
+    }
   }
 
   function renderSyllabus(mentions) {
