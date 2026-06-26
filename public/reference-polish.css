@@ -351,6 +351,13 @@ svg {
   line-height: 1.45;
 }
 
+.sync-card .button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+}
+
 .setup-card,
 .hero-grid,
 .course-strip,
@@ -1313,6 +1320,14 @@ pre,
   align-items: center;
 }
 
+.setup-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .setup-card h3 {
   margin: 0;
   color: var(--ink);
@@ -1332,6 +1347,75 @@ pre,
   margin-top: 10px;
   text-transform: uppercase;
   letter-spacing: 0.07em;
+}
+
+.setup-checklist {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.setup-check {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-height: 58px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  background: rgba(8, 11, 10, 0.76);
+}
+
+.setup-check > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 24px;
+  border: 1px solid rgba(152, 255, 182, 0.28);
+  color: var(--green);
+  font: 850 10px/1 var(--font-mono);
+}
+
+.setup-check.pending > span {
+  border-color: rgba(243, 179, 91, 0.32);
+  color: var(--amber);
+}
+
+.setup-check strong,
+.setup-check em {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.setup-check strong {
+  color: var(--ink);
+  font: 850 11px/1.2 var(--font-mono);
+  text-transform: uppercase;
+}
+
+.setup-check em {
+  margin-top: 4px;
+  color: var(--muted);
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.link-button {
+  min-height: auto !important;
+  margin-top: 10px;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--muted) !important;
+  text-align: left;
+}
+
+.danger-link:hover {
+  color: var(--danger) !important;
 }
 
 @media (max-width: 1180px) {
@@ -1510,6 +1594,14 @@ pre,
   }
 
   .setup-card .setup-row {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-actions {
+    justify-content: flex-start;
+  }
+
+  .setup-checklist {
     grid-template-columns: 1fr;
   }
 

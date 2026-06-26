@@ -18,6 +18,7 @@ export interface StartCanvasBotServerOptions {
   port?: number;
   host?: string;
   publicDir?: string;
+  extensionDir?: string;
   enableScheduler?: boolean;
 }
 
@@ -39,7 +40,8 @@ export async function startCanvasBotServer(
     authService: runtime.authService,
     importedCanvasStore: runtime.importedCanvasStore,
     uploadedSyllabusStore: runtime.uploadedSyllabusStore,
-    publicDir: options.publicDir
+    publicDir: options.publicDir,
+    extensionDir: options.extensionDir
   });
   const port = options.port ?? options.env.PORT;
   const host = options.host ?? "127.0.0.1";

@@ -349,6 +349,42 @@ describe("createApp", () => {
     expect(response.body.data.importedSyncedAt).toBe("2026-06-25T12:00:00.000Z");
   });
 
+  it("reports setup health with synced Canvas and local syllabus counts", async () => {
+    const importedCanvasStore = new MemoryImportedCanvasStore();
+    const uploadedSyllabusStore = new MemoryUploadedSyllabusStore();
+    await importedCanvasStore.set(importSnapshot());
+    await uploadedSyllabusStore.add({
+      title: "Biology syllabus",
+      text: "Portfolio due 6/30."
+    });
+
+    const response = await request(createTestApp({ importedCanvasStore, uploadedSyllabusStore }))
+      .get("/api/setup/health")
+      .expect(200);
+
+    expect(response.body.data).toMatchObject({
+      status: "ready",
+      importConnected: true,
+      importedSyncedAt: "2026-06-25T12:00:00.000Z",
+      canvasBaseUrl: "https://school.instructure.com",
+      extension: {
+        syncUrl: "http://localhost:3000/api/import/canvas-snapshot",
+        guideUrl: "/extension/README.md"
+      },
+      snapshot: {
+        courses: 1,
+        assignments: 1,
+        openAssignments: 1
+      },
+      localData: {
+        hasImportedSnapshot: true,
+        hasUploadedSyllabi: true,
+        uploadedSyllabi: 1
+      }
+    });
+    expect(response.body.data.nextSteps).toContain("Open Overview to review today's report.");
+  });
+
   it("clears imported Canvas snapshots", async () => {
     const importedCanvasStore = new MemoryImportedCanvasStore();
     await importedCanvasStore.set(importSnapshot());
@@ -358,6 +394,28 @@ describe("createApp", () => {
       .expect(200);
 
     await expect(importedCanvasStore.get()).resolves.toBeUndefined();
+  });
+
+  it("clears all local Canvas and syllabus data", async () => {
+    const importedCanvasStore = new MemoryImportedCanvasStore();
+    const uploadedSyllabusStore = new MemoryUploadedSyllabusStore();
+    await importedCanvasStore.set(importSnapshot());
+    await uploadedSyllabusStore.add({
+      title: "Old syllabus",
+      text: "Essay due 7/1."
+    });
+
+    const response = await request(createTestApp({ importedCanvasStore, uploadedSyllabusStore }))
+      .delete("/api/local-data")
+      .expect(200);
+
+    expect(response.body.data).toEqual({
+      connected: false,
+      imported: false,
+      uploadedSyllabi: 0
+    });
+    await expect(importedCanvasStore.get()).resolves.toBeUndefined();
+    await expect(uploadedSyllabusStore.list()).resolves.toEqual([]);
   });
 
   it("disconnects the current Canvas session", async () => {
@@ -378,6 +436,14 @@ describe("createApp", () => {
 
     expect(response.text).toContain("Canvas Workbench");
     expect(response.text).toContain("canvas-workbench.js");
+  });
+
+  it("serves the bundled extension setup guide", async () => {
+    const response = await request(createTestApp())
+      .get("/extension/README.md")
+      .expect(200);
+
+    expect(response.text).toContain("Canvas Workbench Sync Extension");
   });
 
   it("serves daily reports in API envelope format", async () => {

@@ -52,19 +52,19 @@
     const setupCard = ensureSetupCard();
 
     try {
-      const status = await api.get("/api/auth/status");
+      const status = await api.get("/api/setup/health");
       const canvasHost = safeHost(status.canvasBaseUrl);
       if (syncCard) {
         const connected = status.connected || status.importConnected;
         syncCard.innerHTML = connected
-          ? `<strong>Canvas synced</strong><span>${escapeHtml(canvasHost)} data is feeding assignments and deadlines.</span>`
-          : `<strong>No-admin sync</strong><span>Log into Canvas normally, then sync with the companion extension.</span><a class="button" style="display:flex;margin-top:12px;align-items:center;justify-content:center;" href="#firstRunSetup">Setup sync</a>`;
+          ? `<strong>Canvas synced</strong><span>${escapeHtml(status.snapshot.openAssignments)} open assignments from ${escapeHtml(canvasHost)}.</span>`
+          : `<strong>No-admin sync</strong><span>Log into Canvas normally, then sync with the companion extension.</span><a class="button" href="#firstRunSetup">Setup sync</a>`;
       }
       if (setupCard) renderSetupCard(setupCard, status, canvasHost);
     } catch (error) {
-      if (syncCard) syncCard.innerHTML = "<strong>Canvas setup needed</strong><span>Add OAuth credentials in the server environment.</span>";
+      if (syncCard) syncCard.innerHTML = "<strong>Canvas setup needed</strong><span>Open the desktop app, then refresh setup status.</span>";
       if (setupCard) {
-        setupCard.innerHTML = `<div class="setup-row"><div><h3>Canvas setup needed</h3><p>The app could not read the setup status. Check the server environment and refresh.</p></div></div>`;
+        setupCard.innerHTML = `<div class="setup-row"><div><h3>Canvas setup needed</h3><p>The app could not read setup status. Restart Bonehawk Canvas, then refresh this page.</p></div></div>`;
       }
     }
   }
@@ -84,15 +84,30 @@
   function renderSetupCard(card, status, canvasHost) {
     const canConnect = status.oauthConfigured;
     const connected = Boolean(status.connected || status.importConnected);
+    const lastSynced = status.importedSyncedAt ? new Date(status.importedSyncedAt).toLocaleString() : "Not synced yet";
     card.classList.toggle("is-connected", connected);
     if (connected) {
       card.innerHTML = `
         <div class="setup-row">
-          <div><h3>Canvas is synced</h3><p>The workbench can read courses, syllabi, assignments, due dates, and submissions from ${escapeHtml(canvasHost)}.</p></div>
-          <a class="button secondary" href="overview.html">Open report</a>
+          <div>
+            <h3>Canvas is synced</h3>
+            <p>The workbench can read open assignments, due dates, course names, submission state, and syllabus text from ${escapeHtml(canvasHost)}.</p>
+          </div>
+          <div class="setup-actions">
+            <a class="button secondary" href="overview.html">Open report</a>
+            <button class="button secondary" type="button" data-refresh-setup>Refresh</button>
+          </div>
         </div>
-        <div class="setup-meta">Setup complete${status.importedSyncedAt ? ` · last synced ${escapeHtml(new Date(status.importedSyncedAt).toLocaleString())}` : ""}</div>
+        <div class="setup-checklist">
+          ${setupCheck("Desktop app ready", true)}
+          ${setupCheck("Canvas snapshot synced", status.importConnected, lastSynced)}
+          ${setupCheck("Open assignments found", status.snapshot.openAssignments > 0, `${status.snapshot.openAssignments} open / ${status.snapshot.assignments} total`)}
+          ${setupCheck("Uploaded syllabi indexed", status.syllabi.uploaded > 0, `${status.syllabi.uploaded} saved`)}
+        </div>
+        <div class="setup-meta">Setup complete · ${escapeHtml(status.snapshot.courses)} classes · ${escapeHtml(status.extension.syncUrl)}</div>
+        <button class="link-button danger-link" type="button" data-reset-local-data>Reset local Canvas data</button>
       `;
+      wireSetupActions(card);
       return;
     }
 
@@ -102,10 +117,50 @@
           <h3>First-time setup: no admin required</h3>
           <p>Install the companion extension, log into Canvas normally, then click sync. The app will use that synced snapshot for reports, assignments, todos, and guided help.</p>
         </div>
-        <a class="button" href="/extension/README.md">Setup sync</a>
+        <div class="setup-actions">
+          <a class="button" href="${escapeAttr(status.extension.guideUrl)}">Open sync guide</a>
+          <button class="button secondary" type="button" data-refresh-setup>Refresh</button>
+        </div>
       </div>
-      <div class="setup-meta">Canvas host: ${escapeHtml(canvasHost)}${canConnect ? ` · institution OAuth also available at ${escapeHtml(status.connectUrl)}` : " · no school admin needed with extension sync"}${status.prototypeTokenEnabled ? " · prototype token fallback enabled" : ""}</div>
+      <div class="setup-checklist">
+        ${setupCheck("Desktop app ready", true)}
+        ${setupCheck("Extension endpoint", true, status.extension.syncUrl)}
+        ${setupCheck("Canvas snapshot synced", false, "Use the browser extension after logging into Canvas")}
+        ${setupCheck("Reports unlocked", false, "Sync once to fill the homepage")}
+      </div>
+      <div class="setup-meta">Canvas host: ${escapeHtml(canvasHost)}${canConnect ? ` · optional school OAuth available at ${escapeHtml(status.connectUrl)}` : " · no school admin needed"}${status.prototypeTokenEnabled ? " · prototype token fallback enabled" : ""}</div>
     `;
+    wireSetupActions(card);
+  }
+
+  function setupCheck(label, ready, detail) {
+    return `
+      <div class="setup-check ${ready ? "ready" : "pending"}">
+        <span aria-hidden="true">${ready ? "OK" : "--"}</span>
+        <div><strong>${escapeHtml(label)}</strong>${detail ? `<em>${escapeHtml(detail)}</em>` : ""}</div>
+      </div>
+    `;
+  }
+
+  function wireSetupActions(card) {
+    card.querySelectorAll("[data-refresh-setup]").forEach((button) => {
+      button.addEventListener("click", () => hydrateAuthStatus(), { once: true });
+    });
+    card.querySelectorAll("[data-reset-local-data]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (!confirm("Reset synced Canvas data and uploaded syllabi on this computer?")) return;
+        button.disabled = true;
+        try {
+          await api.delete("/api/local-data");
+          localStorage.removeItem(FOCUS_STORAGE_KEY);
+          await hydrateAuthStatus();
+          await hydrateHome();
+        } catch (error) {
+          button.disabled = false;
+          button.textContent = "Reset failed";
+        }
+      }, { once: true });
+    });
   }
 
   async function hydrateHome() {

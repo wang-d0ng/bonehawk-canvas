@@ -8,7 +8,7 @@ import { CanvasClient } from "../canvas/canvasClient.js";
 import type { CanvasAssignment } from "../canvas/types.js";
 import type { AppEnv } from "../config/env.js";
 import { ImportedAssignmentSupportService, ImportedCanvasTaskService } from "../import/importedCanvasServices.js";
-import { importedCanvasSnapshotSchema, type ImportedCanvasStore } from "../import/importedCanvasStore.js";
+import { importedCanvasSnapshotSchema, type ImportedCanvasSnapshot, type ImportedCanvasStore } from "../import/importedCanvasStore.js";
 import { ApiError } from "../lib/apiError.js";
 import type { Reporter } from "../reporters/reporter.js";
 import { AssignmentSupportService } from "../services/assignmentSupportService.js";
@@ -51,6 +51,7 @@ export interface CreateAppOptions {
   uploadedSyllabusStore?: UploadedSyllabusStore;
   authService?: CanvasOAuthService;
   publicDir?: string;
+  extensionDir?: string;
   now?: () => Date;
 }
 
@@ -64,6 +65,7 @@ export function createApp(options: CreateAppOptions) {
 
   app.use(helmet());
   app.use(express.static(options.publicDir ?? "public"));
+  app.use("/extension", express.static(options.extensionDir ?? "extension"));
   app.use(
     cors({
       origin(origin, callback) {
@@ -89,23 +91,23 @@ export function createApp(options: CreateAppOptions) {
   });
 
   app.get("/api/auth/status", asyncHandler(async (request, response) => {
-    const sessionId = getSessionId(request, options);
-    const connected = options.authService
-      ? await options.authService.isConnected(sessionId)
-      : Boolean(options.env.CANVAS_ACCESS_TOKEN);
-    const importedSnapshot = await options.importedCanvasStore?.get();
+    response.json({ success: true, data: await buildSetupStatus(request, options, now()) });
+  }));
+
+  app.get("/api/setup/health", asyncHandler(async (request, response) => {
+    const status = await buildSetupStatus(request, options, now());
 
     response.json({
       success: true,
       data: {
-        connected,
-        importConnected: Boolean(importedSnapshot),
-        importedSyncedAt: importedSnapshot?.syncedAt,
-        oauthConfigured: Boolean(options.authService?.isConfigured()),
-        prototypeTokenEnabled: Boolean(options.env.CANVAS_ACCESS_TOKEN),
-        canvasBaseUrl: options.env.CANVAS_BASE_URL,
-        connectUrl: "/api/auth/canvas/start",
-        importUrl: "/api/import/canvas-snapshot"
+        ...status,
+        status: status.connected || status.importConnected ? "ready" : "needs_canvas_sync",
+        localData: {
+          hasImportedSnapshot: status.importConnected,
+          hasUploadedSyllabi: status.syllabi.uploaded > 0,
+          uploadedSyllabi: status.syllabi.uploaded
+        },
+        nextSteps: buildSetupNextSteps(status)
       }
     });
   }));
@@ -179,6 +181,23 @@ export function createApp(options: CreateAppOptions) {
   app.delete("/api/import/canvas-snapshot", asyncHandler(async (_request, response) => {
     await options.importedCanvasStore?.clear();
     response.json({ success: true, data: { imported: false } });
+  }));
+
+  app.delete("/api/local-data", asyncHandler(async (request, response) => {
+    await Promise.all([
+      options.importedCanvasStore?.clear(),
+      options.uploadedSyllabusStore?.clear(),
+      options.authService?.disconnect(getSessionId(request, options))
+    ]);
+    clearSessionCookie(response, cookieConfig(options));
+    response.json({
+      success: true,
+      data: {
+        connected: false,
+        imported: false,
+        uploadedSyllabi: 0
+      }
+    });
   }));
 
   app.get("/api/courses", asyncHandler(async (request, response) => {
@@ -427,6 +446,79 @@ function isAllowedOrigin(origin: string | undefined, allowedOrigins: string[]): 
     /^chrome-extension:\/\/[a-p]{32}$/i.test(origin) ||
     /^moz-extension:\/\/[0-9a-f-]+$/i.test(origin)
   );
+}
+
+async function buildSetupStatus(request: Request, options: CreateAppOptions, now: Date) {
+  const sessionId = getSessionId(request, options);
+  const connected = options.authService
+    ? await options.authService.isConnected(sessionId)
+    : Boolean(options.env.CANVAS_ACCESS_TOKEN);
+  const importedSnapshot = await options.importedCanvasStore?.get();
+  const uploadedSyllabi = await listUploadedSyllabi(options);
+  const snapshotCounts = importedSnapshot ? countImportedSnapshot(importedSnapshot, now) : undefined;
+
+  return {
+    connected,
+    importConnected: Boolean(importedSnapshot),
+    importedSyncedAt: importedSnapshot?.syncedAt,
+    oauthConfigured: Boolean(options.authService?.isConfigured()),
+    prototypeTokenEnabled: Boolean(options.env.CANVAS_ACCESS_TOKEN),
+    canvasBaseUrl: importedSnapshot?.canvasBaseUrl ?? options.env.CANVAS_BASE_URL,
+    connectUrl: "/api/auth/canvas/start",
+    importUrl: "/api/import/canvas-snapshot",
+    extension: {
+      syncUrl: "http://localhost:3000/api/import/canvas-snapshot",
+      guideUrl: "/extension/README.md"
+    },
+    snapshot: snapshotCounts ?? {
+      courses: 0,
+      assignments: 0,
+      openAssignments: 0
+    },
+    syllabi: {
+      uploaded: uploadedSyllabi.length
+    }
+  };
+}
+
+function countImportedSnapshot(snapshot: ImportedCanvasSnapshot, now: Date) {
+  const assignmentsByCourse = new Map<number, CanvasAssignment[]>();
+  for (const [courseId, assignments] of Object.entries(snapshot.assignmentsByCourse)) {
+    const numericCourseId = Number.parseInt(courseId, 10);
+    assignmentsByCourse.set(
+      numericCourseId,
+      assignments.map((assignment) => ({
+        ...assignment,
+        course_id: assignment.course_id ?? numericCourseId
+      }))
+    );
+  }
+
+  const tasks = buildAssignmentTasks(snapshot.courses, assignmentsByCourse, now);
+  return {
+    courses: snapshot.courses.length,
+    assignments: Object.values(snapshot.assignmentsByCourse).reduce(
+      (total, assignments) => total + assignments.length,
+      0
+    ),
+    openAssignments: tasks.filter((task) => task.status !== "completed").length
+  };
+}
+
+function buildSetupNextSteps(status: Awaited<ReturnType<typeof buildSetupStatus>>): string[] {
+  if (status.connected || status.importConnected) {
+    return [
+      "Open Overview to review today's report.",
+      "Choose focused classes on the homepage.",
+      "Upload any syllabi that Canvas does not expose clearly."
+    ];
+  }
+
+  return [
+    "Open the sync guide and install the companion extension.",
+    "Log into Canvas in your browser.",
+    "Use the extension to sync Canvas into this app."
+  ];
 }
 
 function asyncHandler(

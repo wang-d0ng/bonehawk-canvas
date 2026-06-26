@@ -113,6 +113,7 @@ async function startBundledServer() {
     port: 3000,
     host: "localhost",
     publicDir: path.join(appPath, "public"),
+    extensionDir: path.join(appPath, "extension"),
     enableScheduler: false
   });
 }

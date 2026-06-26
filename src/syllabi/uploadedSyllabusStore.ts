@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
 
@@ -20,6 +20,7 @@ export interface UploadedSyllabusStore {
   list(): Promise<UploadedSyllabus[]>;
   add(input: UploadedSyllabusInput): Promise<UploadedSyllabus>;
   remove(id: string): Promise<boolean>;
+  clear(): Promise<void>;
 }
 
 export class MemoryUploadedSyllabusStore implements UploadedSyllabusStore {
@@ -45,6 +46,10 @@ export class MemoryUploadedSyllabusStore implements UploadedSyllabusStore {
     this.syllabi = next;
     return removed;
   }
+
+  async clear(): Promise<void> {
+    this.syllabi = [];
+  }
 }
 
 export class FileUploadedSyllabusStore implements UploadedSyllabusStore {
@@ -68,6 +73,10 @@ export class FileUploadedSyllabusStore implements UploadedSyllabusStore {
 
     await this.writeAll(next);
     return true;
+  }
+
+  async clear(): Promise<void> {
+    await rm(this.filePath, { force: true });
   }
 
   private async readAll(): Promise<UploadedSyllabus[]> {
