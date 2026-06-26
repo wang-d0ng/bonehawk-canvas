@@ -876,6 +876,148 @@ input[type="file"]:focus {
   margin-top: 10px;
 }
 
+.calendar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.calendar-controls {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+
+.calendar-shell {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: rgba(5, 6, 7, 0.42);
+  box-shadow: inset 0 0 18px rgba(152, 255, 182, 0.025);
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.calendar-weekdays span {
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  border-right: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font: 850 10px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.calendar-weekdays span:last-child {
+  border-right: 0;
+}
+
+.calendar-grid {
+  min-height: 580px;
+}
+
+.calendar-day {
+  position: relative;
+  min-width: 0;
+  min-height: 112px !important;
+  height: auto;
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch !important;
+  justify-content: start !important;
+  gap: 5px;
+  padding: 9px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--line-soft) !important;
+  border-bottom: 1px solid var(--line-soft) !important;
+  border-radius: 0 !important;
+  background: rgba(14, 18, 17, 0.74) !important;
+  box-shadow: none !important;
+  color: var(--ink) !important;
+  text-align: left !important;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.calendar-day:nth-child(7n) {
+  border-right: 0 !important;
+}
+
+.calendar-day:hover,
+.calendar-day.selected {
+  background: rgba(152, 255, 182, 0.09) !important;
+  color: var(--ink) !important;
+}
+
+.calendar-day.selected {
+  outline: 2px solid rgba(152, 255, 182, 0.55);
+  outline-offset: -2px;
+}
+
+.calendar-day.today > span {
+  color: #041008;
+  background: var(--green);
+}
+
+.calendar-day.empty {
+  background: rgba(5, 6, 7, 0.32) !important;
+  cursor: default;
+}
+
+.calendar-day > span {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  font: 850 11px/1 var(--font-mono);
+}
+
+.calendar-day strong {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(152, 255, 182, 0.3);
+  border-radius: 3px;
+  padding: 5px 6px;
+  background: rgba(152, 255, 182, 0.08);
+  color: var(--green);
+  font: 850 10px/1.25 var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-day strong.danger {
+  border-color: rgba(255, 92, 100, 0.48);
+  background: rgba(255, 92, 100, 0.1);
+  color: var(--red);
+}
+
+.calendar-day strong.info {
+  border-color: rgba(122, 162, 255, 0.42);
+  background: rgba(122, 162, 255, 0.1);
+  color: var(--blue);
+}
+
+.calendar-day em {
+  color: var(--muted);
+  font: 850 10px/1 var(--font-mono);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .calendar-list {
   display: grid;
   gap: 8px;
@@ -884,8 +1026,8 @@ input[type="file"]:focus {
 
 .calendar-event {
   display: grid;
-  grid-template-columns: minmax(120px, 0.28fr) minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
   padding: 12px;
   border: 1px solid var(--line);
@@ -919,26 +1061,8 @@ input[type="file"]:focus {
   font-size: 12px;
 }
 
-.calendar-event em {
-  min-height: 24px;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 2px 8px;
-  color: var(--green);
-  font: 850 10px/1 var(--font-mono);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  font-style: normal;
-}
-
 .calendar-event.danger {
   border-color: rgba(255, 92, 100, 0.52);
-}
-
-.calendar-event.info em {
-  color: var(--blue);
 }
 
 .filters {
@@ -1355,6 +1479,29 @@ pre,
 
   .overview-tabs button {
     min-width: max-content;
+  }
+
+  .calendar-head {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-controls {
+    justify-content: start;
+  }
+
+  .calendar-grid {
+    min-height: 0;
+  }
+
+  .calendar-day {
+    min-height: 88px !important;
+    padding: 6px !important;
+  }
+
+  .calendar-day strong {
+    padding: 4px;
+    font-size: 9px;
   }
 
   .syllabus-upload,

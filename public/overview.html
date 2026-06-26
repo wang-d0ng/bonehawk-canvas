@@ -196,18 +196,30 @@
 
       <section class="grid overview-panel" data-overview-panel="calendar" hidden>
         <div class="panel span-8">
-          <h3>Calendar</h3>
-          <p class="lead">Dated open work from the selected classes, sorted by deadline.</p>
-          <div class="calendar-list" id="calendarList" aria-live="polite">
-            <div class="calendar-event"><time>Loading</time><div><strong>Reading Canvas dates</strong><span>Calendar will fill in after the current sync is read.</span></div></div>
+          <div class="calendar-head">
+            <div>
+              <h3 id="calendarMonth">Calendar</h3>
+              <p class="lead">Dated open work from the selected classes, sorted by deadline.</p>
+            </div>
+            <div class="calendar-controls" aria-label="Calendar controls">
+              <button class="button secondary" type="button" data-calendar-nav="prev">Prev</button>
+              <button class="button secondary" type="button" data-calendar-nav="today">Today</button>
+              <button class="button secondary" type="button" data-calendar-nav="next">Next</button>
+            </div>
+          </div>
+          <div class="calendar-shell" aria-live="polite">
+            <div class="calendar-weekdays" aria-hidden="true">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="calendar-grid" id="calendarGrid">
+              <button class="calendar-day" type="button"><span>--</span><strong>Reading Canvas dates</strong></button>
+            </div>
           </div>
         </div>
         <aside class="panel span-4">
-          <h3>Calendar rules</h3>
-          <div class="syllabus">
-            <div class="mention"><b>Open work only</b><p>Completed assignments stay out of this calendar.</p></div>
-            <div class="mention"><b>Focus aware</b><p>The calendar follows the class choices configured on the homepage.</p></div>
-            <div class="mention"><b>Syllabus backup</b><p>Uploaded syllabi appear as reference notes in the report tab.</p></div>
+          <h3 id="calendarDayTitle">Selected day</h3>
+          <div class="calendar-list" id="calendarList" aria-live="polite">
+            <div class="calendar-event"><time>Loading</time><div><strong>Reading Canvas dates</strong><span>Calendar will fill in after the current sync is read.</span></div></div>
           </div>
         </aside>
       </section>

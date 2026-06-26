@@ -29,7 +29,10 @@
 
   const state = {
     tasks: [],
-    selectedTask: null
+    selectedTask: null,
+    calendarEvents: [],
+    calendarCursor: new Date(),
+    selectedCalendarDate: toDateKey(new Date())
   };
   const FOCUS_STORAGE_KEY = "canvas-workbench.focusCourseIds";
 
@@ -269,14 +272,18 @@
   }
 
   async function hydrateCalendar() {
-    const root = document.querySelector("#calendarList");
-    if (!root) return;
+    const grid = document.querySelector("#calendarGrid");
+    if (!grid) return;
 
     try {
       const calendar = await api.get(withFocus("/api/calendar"));
-      renderCalendar(calendar.events || []);
+      state.calendarEvents = calendar.events || [];
+      state.calendarCursor = state.calendarCursor || new Date();
+      state.selectedCalendarDate = toDateKey(new Date());
+      renderCalendar();
+      wireCalendarControls();
     } catch (error) {
-      root.innerHTML = `<div class="calendar-event"><time>Setup</time><div><strong>Sync Canvas first</strong><span>Calendar dates will appear after the app can read Canvas.</span></div></div>`;
+      grid.innerHTML = `<button class="calendar-day empty" type="button"><span>--</span><strong>Sync Canvas first</strong><em>Calendar dates will appear after the app can read Canvas.</em></button>`;
     }
   }
 
@@ -434,30 +441,116 @@
     }).join("");
   }
 
-  function renderCalendar(events) {
+  function renderCalendar() {
+    const grid = document.querySelector("#calendarGrid");
+    const title = document.querySelector("#calendarMonth");
+    if (!grid) return;
+
+    const cursor = state.calendarCursor;
+    const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+    const eventsByDate = groupEventsByDate(state.calendarEvents);
+    const selectedDate = state.selectedCalendarDate;
+    setText(title, monthStart.toLocaleDateString([], { month: "long", year: "numeric" }));
+
+    const cells = [];
+    for (let index = 0; index < monthStart.getDay(); index += 1) {
+      cells.push(`<span class="calendar-day empty" aria-hidden="true"></span>`);
+    }
+
+    for (let day = 1; day <= monthEnd.getDate(); day += 1) {
+      const date = new Date(cursor.getFullYear(), cursor.getMonth(), day);
+      const key = toDateKey(date);
+      const events = eventsByDate.get(key) || [];
+      const isToday = key === toDateKey(new Date());
+      const selected = key === selectedDate;
+      cells.push(`
+        <button class="calendar-day${isToday ? " today" : ""}${selected ? " selected" : ""}" type="button" data-calendar-date="${escapeAttr(key)}" aria-pressed="${selected}">
+          <span>${day}</span>
+          ${events.slice(0, 3).map((event) => `<strong class="${calendarEventTone(event)}">${escapeHtml(event.title)}</strong>`).join("")}
+          ${events.length > 3 ? `<em>+${events.length - 3} more</em>` : ""}
+        </button>
+      `);
+    }
+
+    grid.innerHTML = cells.join("");
+    grid.querySelectorAll("[data-calendar-date]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.selectedCalendarDate = button.dataset.calendarDate;
+        renderCalendar();
+      });
+    });
+    renderSelectedCalendarDay(eventsByDate.get(selectedDate) || []);
+  }
+
+  function wireCalendarControls() {
+    document.querySelectorAll("[data-calendar-nav]").forEach((button) => {
+      if (button.dataset.wired === "true") return;
+      button.dataset.wired = "true";
+      button.addEventListener("click", () => {
+        const action = button.dataset.calendarNav;
+        if (action === "prev" || action === "next") {
+          state.calendarCursor = addCalendarMonths(state.calendarCursor, action === "prev" ? -1 : 1);
+          state.selectedCalendarDate = toDateKey(state.calendarCursor);
+        }
+        if (action === "today") {
+          const today = new Date();
+          state.calendarCursor = today;
+          state.selectedCalendarDate = toDateKey(today);
+        }
+        renderCalendar();
+      });
+    });
+  }
+
+  function renderSelectedCalendarDay(events) {
     const root = document.querySelector("#calendarList");
+    const title = document.querySelector("#calendarDayTitle");
     if (!root) return;
 
+    const selectedDate = dateFromKey(state.selectedCalendarDate);
+    setText(title, selectedDate ? selectedDate.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }) : "Selected day");
+
     if (events.length === 0) {
-      root.innerHTML = `<div class="calendar-event"><time>Clear</time><div><strong>No dated open work</strong><span>The selected classes do not have open assignments with due dates right now.</span></div></div>`;
+      root.innerHTML = `<div class="calendar-event"><time>Clear</time><div><strong>No open work due</strong><span>Select another date or change the focused classes on the homepage.</span></div></div>`;
       return;
     }
 
     root.innerHTML = events.map((event) => {
-      const date = event.startsAt ? formatDate(event.startsAt) : "No date";
       const time = event.startsAt ? formatTime(event.startsAt) : "";
-      const urgent = event.status === "overdue" || event.status === "missing" ? "danger" : event.status === "upcoming" ? "info" : "";
+      const urgent = calendarEventTone(event);
       return `
         <div class="calendar-event ${urgent}">
-          <time>${escapeHtml(date)}${time ? `<span>${escapeHtml(time)}</span>` : ""}</time>
+          <time>${time || "Due"}<span>${escapeHtml(event.priority)}</span></time>
           <div>
             <strong>${escapeHtml(event.title)}</strong>
             <span>${escapeHtml(event.courseName)} - ${escapeHtml(event.action)}</span>
           </div>
-          <em>${escapeHtml(event.priority)}</em>
         </div>
       `;
     }).join("");
+  }
+
+  function groupEventsByDate(events) {
+    return events.reduce((map, event) => {
+      if (!event.startsAt) return map;
+      const key = toDateKey(new Date(event.startsAt));
+      const nextEvents = [...(map.get(key) || []), event].sort((left, right) =>
+        new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime()
+      );
+      map.set(key, nextEvents);
+      return map;
+    }, new Map());
+  }
+
+  function calendarEventTone(event) {
+    if (event.status === "overdue" || event.status === "missing") return "danger";
+    if (event.status === "upcoming") return "info";
+    return "";
+  }
+
+  function addCalendarMonths(date, delta) {
+    return new Date(date.getFullYear(), date.getMonth() + delta, 1);
   }
 
   async function renderUploadedSyllabi() {
@@ -693,6 +786,20 @@
       day: "numeric",
       year: "numeric"
     });
+  }
+
+  function toDateKey(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function dateFromKey(key) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key))) return undefined;
+    const [year, month, day] = key.split("-").map((part) => Number.parseInt(part, 10));
+    return new Date(year, month - 1, day);
   }
 
   function safeHost(value) {
