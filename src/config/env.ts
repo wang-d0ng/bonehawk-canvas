@@ -13,7 +13,7 @@ const optionalSecretSchema = z
   );
 
 export const envSchema = z.object({
-  CANVAS_BASE_URL: z.string().url(),
+  CANVAS_BASE_URL: z.string().url().default("https://canvas.instructure.com"),
   CANVAS_ACCESS_TOKEN: optionalSecretSchema,
   CANVAS_CLIENT_ID: optionalSecretSchema,
   CANVAS_CLIENT_SECRET: optionalSecretSchema,
@@ -25,7 +25,7 @@ export const envSchema = z.object({
   TOKEN_STORE_PATH: z.string().default(".data/canvas-oauth-tokens.json"),
   IMPORT_STORE_PATH: z.string().default(".data/imported-canvas-snapshot.json"),
   SYLLABUS_STORE_PATH: z.string().default(".data/uploaded-syllabi.json"),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  PORT: z.coerce.number().int().min(0).max(65535).default(3000),
   DAILY_REPORT_CRON: z.string().default("0 7 * * *"),
   REPORT_CHANNEL: z.enum(["console", "email"]).default("console"),
   REPORT_RECIPIENT_EMAIL: optionalEmailSchema,

@@ -50,6 +50,7 @@ export interface CreateAppOptions {
   importedCanvasStore?: ImportedCanvasStore;
   uploadedSyllabusStore?: UploadedSyllabusStore;
   authService?: CanvasOAuthService;
+  publicDir?: string;
   now?: () => Date;
 }
 
@@ -62,7 +63,7 @@ export function createApp(options: CreateAppOptions) {
   const now = options.now ?? (() => new Date());
 
   app.use(helmet());
-  app.use(express.static("public"));
+  app.use(express.static(options.publicDir ?? "public"));
   app.use(
     cors({
       origin(origin, callback) {

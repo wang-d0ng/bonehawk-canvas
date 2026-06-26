@@ -2,12 +2,16 @@
   "name": "canvas-assignment-bot",
   "version": "0.1.0",
   "description": "Instructure Canvas assignment bot API for daily task reports and assignment guidance.",
+  "author": "Bonehawk Canvas",
   "type": "module",
-  "main": "dist/src/server.js",
+  "main": "desktop/main.cjs",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/src/server.js",
     "build": "tsc",
+    "desktop:dev": "npm run build && electron .",
+    "desktop:dir": "npm run build && electron-builder --mac --dir --publish never",
+    "desktop:dist": "npm run build && electron-builder --mac dmg zip --publish never",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -37,9 +41,46 @@
     "@types/sanitize-html": "^2.16.0",
     "@types/supertest": "^6.0.3",
     "@vitest/coverage-v8": "^4.0.16",
+    "electron": "^42.5.0",
+    "electron-builder": "^26.15.3",
     "supertest": "^7.1.4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
+  },
+  "build": {
+    "appId": "com.bonehawk.canvas",
+    "productName": "Bonehawk Canvas",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "dist/src/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "sign": false
+    }
   }
 }

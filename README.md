@@ -37,7 +37,19 @@ npm run dev
 npm test
 npm run test:coverage
 npm run build
+npm run desktop:dev
+npm run desktop:dist
 ```
+
+## Desktop App
+
+The Electron desktop app wraps the same local Canvas Workbench server in a native window.
+
+- Development launch: `npm run desktop:dev`
+- macOS release build: `npm run desktop:dist`
+- Output directory: `release/`
+
+Desktop data is stored in the app user-data folder, not in the packaged app. The release build currently targets macOS Apple Silicon and is unsigned, so macOS may require opening it through Finder's security prompt the first time.
 
 ## API
 
