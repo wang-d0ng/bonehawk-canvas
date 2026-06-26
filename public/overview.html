@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas Workbench - Overview</title>
+  <style>
+    :root {
+      --bg: oklch(97% 0.008 235);
+      --surface: oklch(99.5% 0.002 235);
+      --surface-2: oklch(94.5% 0.012 235);
+      --surface-raised: oklch(100% 0 0 / 0.82);
+      --fg: oklch(17.5% 0.026 238);
+      --muted: oklch(47% 0.018 238);
+      --border: oklch(87% 0.012 235);
+      --accent: oklch(55% 0.14 165);
+      --accent-ink: oklch(28% 0.09 165);
+      --success: oklch(54% 0.12 145);
+      --warn: oklch(65% 0.13 70);
+      --danger: oklch(55% 0.16 28);
+      --info: oklch(55% 0.12 245);
+      --shadow: 0 22px 70px oklch(18% 0.026 238 / 0.12);
+      --shadow-soft: 0 12px 34px oklch(18% 0.026 238 / 0.08);
+      --font-display: "Avenir Next", "Sohne", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      --font-mono: "SFMono-Regular", "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(125deg, oklch(88% 0.05 170 / 0.28), transparent 30%),
+        linear-gradient(180deg, oklch(100% 0 0 / 0.86), oklch(95% 0.012 235)),
+        var(--bg);
+      color: var(--fg);
+      font: 15px/1.5 var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 260px minmax(0, 1fr); }
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, oklch(100% 0 0 / 0.88), oklch(95.5% 0.01 235 / 0.84));
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      box-shadow: 12px 0 44px oklch(18% 0.026 238 / 0.05);
+      backdrop-filter: blur(22px) saturate(135%);
+    }
+    .brand { display: flex; gap: 12px; align-items: center; }
+    .mark { width: 36px; height: 36px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), oklch(51% 0.13 205)); color: white; display: grid; place-items: center; box-shadow: 0 14px 30px oklch(55% 0.14 165 / 0.24); }
+    .mark svg, .nav svg, .button svg { width: 18px; height: 18px; stroke-width: 1.8; }
+    h1, h2, h3, p { margin-top: 0; }
+    .brand h1 { margin: 0; font: 620 17px/1.1 var(--font-display); letter-spacing: -0.01em; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .nav { display: grid; gap: 6px; }
+    .nav a { min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: var(--muted); font-weight: 540; transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease; }
+    .nav a:hover { background: oklch(96% 0.012 235); color: var(--fg); transform: translateX(2px); }
+    .nav a.active { background: linear-gradient(135deg, oklch(96.5% 0.018 165), oklch(98% 0.006 235)); color: var(--fg); box-shadow: inset 0 0 0 1px oklch(82% 0.035 165), var(--shadow-soft); }
+    .main { padding: 30px clamp(18px, 4vw, 48px); min-width: 0; }
+    .page-head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 24px; }
+    .eyebrow { color: var(--accent-ink); font: 700 12px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+    .title { font: 620 clamp(30px, 4vw, 50px)/1.05 var(--font-display); letter-spacing: -0.024em; margin: 0; }
+    .lead { color: var(--muted); max-width: 68ch; font-size: 16px; margin: 12px 0 0; }
+    .button { min-height: 44px; border: 0; border-radius: 12px; padding: 0 15px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; background: var(--accent); color: white; font-weight: 680; cursor: pointer; box-shadow: 0 12px 28px oklch(55% 0.14 165 / 0.22); transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease; }
+    .button:hover { transform: translateY(-1px); filter: saturate(1.08); box-shadow: 0 16px 34px oklch(55% 0.14 165 / 0.26); }
+    .button.secondary { background: oklch(100% 0 0 / 0.72); color: var(--fg); border: 1px solid var(--border); box-shadow: var(--shadow-soft); }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+    .panel { background: linear-gradient(180deg, var(--surface-raised), oklch(97.5% 0.006 235 / 0.84)); border: 1px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); }
+    .span-8 { grid-column: span 8; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric { background: oklch(96% 0.014 235 / 0.86); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.65); }
+    .metric b { display: block; font: 680 31px/1 var(--font-mono); letter-spacing: -0.02em; }
+    .metric span { display: block; color: var(--muted); font-size: 13px; margin-top: 7px; }
+    .report-list { margin-top: 18px; display: grid; gap: 10px; }
+    .task { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: oklch(100% 0 0 / 0.7); box-shadow: var(--shadow-soft); transition: transform 0.16s ease, border-color 0.16s ease; }
+    .task:hover { transform: translateY(-1px); border-color: oklch(82% 0.035 165); }
+    .flag { width: 10px; height: 10px; border-radius: 99px; margin-top: 7px; background: var(--warn); }
+    .flag.danger { background: var(--danger); }
+    .flag.info { background: var(--info); }
+    .task strong { display: block; font-size: 14px; }
+    .task span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .time { color: var(--muted); font: 650 12px/1 var(--font-mono); }
+    .bar { height: 12px; border-radius: 99px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
+    .bar span { display: block; height: 100%; background: var(--accent); width: var(--w); }
+    .syllabus { display: grid; gap: 12px; }
+    .mention { padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: oklch(96% 0.014 235 / 0.86); box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.65); }
+    .mention b { display: block; margin-bottom: 5px; }
+    .mention p { margin: 0; color: var(--muted); font-size: 13px; }
+    #toast { min-height: 20px; color: var(--muted); font-size: 13px; margin-top: 10px; }
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
+      .nav { display: flex; overflow-x: auto; }
+      .nav a { white-space: nowrap; }
+      .page-head { flex-direction: column; }
+      .span-8, .span-4, .span-6 { grid-column: 1 / -1; }
+    }
+    @media (max-width: 640px) {
+      .metric-grid { grid-template-columns: repeat(2, 1fr); }
+      .main { padding: 22px 16px; }
+      .task { grid-template-columns: auto 1fr; }
+      .time { grid-column: 2; }
+    }
+  </style>
+  <link rel="stylesheet" href="reference-polish.css" />
+  <script defer src="canvas-workbench.js"></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5.5h8.5a4.5 4.5 0 0 1 0 9H9l-4 4v-13Z"/></svg></div><div><h1>Canvas Workbench</h1><p>Daily report</p></div></div>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a class="active" href="overview.html">Overview</a>
+        <a href="assignments.html">Assignments</a>
+        <a href="todo.html">Todo</a>
+        <a href="ai-do-it.html">Do it for me</a>
+      </nav>
+    </aside>
+    <main class="main">
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Generated at 8:10 AM</p>
+          <h2 class="title">Today's Canvas report</h2>
+          <p class="lead">Loading the real Canvas report from synced courses, assignment due dates, submission status, and syllabus mentions.</p>
+        </div>
+        <div>
+          <button class="button" id="sendReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>Send report</button>
+          <div id="toast" aria-live="polite"></div>
+        </div>
+      </header>
+
+      <section class="grid">
+        <div class="panel span-8">
+          <h3>Open work</h3>
+          <div class="bot-strip" aria-label="Report generation pipeline">
+            <div class="bot-step"><strong>Canvas</strong><span>12 active assignment records</span></div>
+            <div class="bot-step"><strong>Syllabus</strong><span>2 mentions without due dates</span></div>
+            <div class="bot-step"><strong>Rubrics</strong><span>3 high-risk instructions found</span></div>
+            <div class="bot-step"><strong>Report</strong><span>Ready for morning delivery</span></div>
+          </div>
+          <div class="metric-grid">
+            <div class="metric"><b>12</b><span>Total open</span></div>
+            <div class="metric"><b>3</b><span>Due today</span></div>
+            <div class="metric"><b>1</b><span>Overdue</span></div>
+            <div class="metric"><b>5</b><span>Upcoming</span></div>
+          </div>
+          <div class="report-list">
+            <div class="task"><span class="flag danger"></span><div><strong>Lab reflection recovery</strong><span>Biology 104 - open Canvas, confirm late policy, submit fastest acceptable version.</span></div><span class="time">90 min</span></div>
+            <div class="task"><span class="flag"></span><div><strong>Discussion response</strong><span>English 201 - read rubric, draft response, leave time for upload.</span></div><span class="time">45 min</span></div>
+            <div class="task"><span class="flag info"></span><div><strong>Problem set start</strong><span>Statistics 132 - due in 2 days, block one focused work session.</span></div><span class="time">80 min</span></div>
+          </div>
+        </div>
+
+        <aside class="panel span-4">
+          <h3>Urgency mix</h3>
+          <p class="lead">The bot prioritizes missing, overdue, due today, then high-point upcoming work.</p>
+          <div class="live-rail">
+            <div><span>Report confidence</span><span>High</span></div>
+            <progress value="91" max="100" aria-label="Report confidence"></progress>
+          </div>
+          <div style="display:grid; gap:14px; margin-top:18px;">
+            <div><div style="display:flex;justify-content:space-between;"><b>Immediate</b><span class="time">4</span></div><div class="bar"><span style="--w:58%"></span></div></div>
+            <div><div style="display:flex;justify-content:space-between;"><b>This week</b><span class="time">5</span></div><div class="bar"><span style="--w:72%; background: var(--info);"></span></div></div>
+            <div><div style="display:flex;justify-content:space-between;"><b>Undated</b><span class="time">3</span></div><div class="bar"><span style="--w:34%; background: var(--warn);"></span></div></div>
+          </div>
+        </aside>
+
+        <div class="panel span-6">
+          <h3>Syllabus mentions</h3>
+          <div class="syllabus">
+            <div class="mention"><b>Biology 104</b><p>Final lab portfolio is referenced in the syllabus but has no assignment due date yet.</p></div>
+            <div class="mention"><b>English 201</b><p>Peer review window opens after the essay draft submission.</p></div>
+          </div>
+        </div>
+        <div class="panel span-6">
+          <h3>Report channels</h3>
+          <p class="lead">Review the exact report text before it is sent. The content below is generated from the current Canvas sync and selected classes.</p>
+          <button class="button secondary" id="preview">Preview email copy</button>
+          <pre id="previewText" style="white-space:pre-wrap; margin:14px 0 0; color:var(--muted); font:13px/1.5 var(--font-mono);">Loading report...</pre>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

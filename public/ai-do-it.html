@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas Workbench - Do it for me</title>
+  <style>
+    :root {
+      --bg: oklch(97% 0.008 235);
+      --surface: oklch(99.5% 0.002 235);
+      --surface-2: oklch(94.5% 0.012 235);
+      --surface-raised: oklch(100% 0 0 / 0.82);
+      --fg: oklch(17.5% 0.026 238);
+      --muted: oklch(47% 0.018 238);
+      --border: oklch(87% 0.012 235);
+      --accent: oklch(55% 0.14 165);
+      --accent-ink: oklch(28% 0.09 165);
+      --success: oklch(54% 0.12 145);
+      --warn: oklch(65% 0.13 70);
+      --danger: oklch(55% 0.16 28);
+      --shadow: 0 22px 70px oklch(18% 0.026 238 / 0.12);
+      --shadow-soft: 0 12px 34px oklch(18% 0.026 238 / 0.08);
+      --font-display: "Avenir Next", "Sohne", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      --font-mono: "SFMono-Regular", "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(125deg, oklch(88% 0.05 170 / 0.28), transparent 30%),
+        linear-gradient(180deg, oklch(100% 0 0 / 0.86), oklch(95% 0.012 235)),
+        var(--bg);
+      color: var(--fg);
+      font: 15px/1.5 var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, select, textarea { font: inherit; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 260px minmax(0, 1fr); }
+    .sidebar { background: linear-gradient(180deg, oklch(100% 0 0 / 0.88), oklch(95.5% 0.01 235 / 0.84)); border-right: 1px solid var(--border); padding: 22px; display: flex; flex-direction: column; gap: 22px; box-shadow: 12px 0 44px oklch(18% 0.026 238 / 0.05); backdrop-filter: blur(22px) saturate(135%); }
+    .brand { display: flex; gap: 12px; align-items: center; }
+    .mark { width: 36px; height: 36px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), oklch(51% 0.13 205)); color: white; display: grid; place-items: center; font: 760 12px/1 var(--font-mono); letter-spacing: 0.08em; box-shadow: 0 14px 30px oklch(55% 0.14 165 / 0.24); }
+    .brand h1 { margin: 0; font: 620 17px/1.1 var(--font-display); letter-spacing: -0.01em; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .nav { display: grid; gap: 6px; }
+    .nav a { min-height: 44px; display: flex; align-items: center; padding: 10px 12px; border-radius: 10px; color: var(--muted); font-weight: 540; transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease; }
+    .nav a:hover { background: oklch(96% 0.012 235); color: var(--fg); transform: translateX(2px); }
+    .nav a.active { background: linear-gradient(135deg, oklch(96.5% 0.018 165), oklch(98% 0.006 235)); color: var(--fg); box-shadow: inset 0 0 0 1px oklch(82% 0.035 165), var(--shadow-soft); }
+    .main { padding: 30px clamp(18px, 4vw, 48px); min-width: 0; }
+    .eyebrow { color: var(--accent-ink); font: 700 12px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 10px; }
+    h2 { font: 620 clamp(30px, 4vw, 48px)/1.05 var(--font-display); letter-spacing: -0.024em; margin: 0; }
+    .lead { color: var(--muted); max-width: 68ch; font-size: 16px; margin: 12px 0 0; }
+    .workspace { margin-top: 24px; display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 14px; align-items: start; }
+    .panel { background: linear-gradient(180deg, var(--surface-raised), oklch(97.5% 0.006 235 / 0.84)); border: 1px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); }
+    label { display: block; font-weight: 650; margin-top: 14px; }
+    select, textarea { width: 100%; min-height: 44px; margin-top: 7px; border: 1px solid var(--border); border-radius: 12px; background: oklch(100% 0 0 / 0.78); color: var(--fg); padding: 11px 12px; box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.75), var(--shadow-soft); transition: border-color 0.16s ease, box-shadow 0.16s ease; }
+    select:focus, textarea:focus { outline: none; border-color: oklch(74% 0.055 165); box-shadow: 0 0 0 4px oklch(84% 0.05 165 / 0.24), var(--shadow-soft); }
+    textarea { min-height: 110px; resize: vertical; }
+    .button { min-height: 44px; border: 0; border-radius: 12px; padding: 0 15px; background: var(--accent); color: white; font-weight: 680; cursor: pointer; width: 100%; margin-top: 16px; box-shadow: 0 12px 28px oklch(55% 0.14 165 / 0.22); transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease; }
+    .button:hover { transform: translateY(-1px); filter: saturate(1.08); box-shadow: 0 16px 34px oklch(55% 0.14 165 / 0.26); }
+    .button.secondary { background: oklch(100% 0 0 / 0.72); color: var(--fg); border: 1px solid var(--border); box-shadow: var(--shadow-soft); }
+    .result { min-height: 560px; display: grid; gap: 12px; align-content: start; }
+    .block { border: 1px solid var(--border); background: oklch(96% 0.014 235 / 0.86); border-radius: 14px; padding: 15px; box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.65); }
+    .block h3 { margin: 0 0 8px; font: 620 18px/1.2 var(--font-display); }
+    .block p, .block li { color: var(--muted); }
+    .block ul { margin: 0; padding-left: 20px; }
+    .guard { border-color: oklch(86% 0.035 70); background: linear-gradient(135deg, oklch(97% 0.025 70), oklch(97% 0.012 165)); }
+    .copy-state { min-height: 20px; color: var(--muted); font-size: 13px; margin-top: 10px; }
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
+      .nav { display: flex; overflow-x: auto; }
+      .nav a { white-space: nowrap; }
+      .workspace { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) { .main { padding: 22px 16px; } }
+  </style>
+  <link rel="stylesheet" href="reference-polish.css" />
+  <script defer src="canvas-workbench.js"></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="mark">CW</div><div><h1>Canvas Workbench</h1><p>Guided AI help</p></div></div>
+      <nav class="nav"><a href="index.html">Home</a><a href="overview.html">Overview</a><a href="assignments.html">Assignments</a><a href="todo.html">Todo</a><a class="active" href="ai-do-it.html">Do it for me</a></nav>
+    </aside>
+    <main class="main">
+      <p class="eyebrow">Do it for me tab</p>
+      <h2>Generate a plan, outline, checklist, and starter template.</h2>
+      <p class="lead">This screen models the backend endpoint as guided assignment support. It prepares student work artifacts but does not submit anything to Canvas.</p>
+      <div class="bot-strip" aria-label="Guided help boundary">
+        <div class="bot-step"><strong>Read</strong><span>Assignment prompt and rubric</span></div>
+        <div class="bot-step"><strong>Reason</strong><span>Break requirements into steps</span></div>
+        <div class="bot-step"><strong>Draft</strong><span>Plan, outline, checklist</span></div>
+        <div class="bot-step"><strong>Review</strong><span>Student edits before submit</span></div>
+      </div>
+      <section class="workspace">
+        <form class="panel" id="helperForm">
+          <label for="assignment">Assignment</label>
+          <select id="assignment">
+            <option>Lab reflection recovery - Biology 104</option>
+            <option>Discussion response - English 201</option>
+            <option>Problem set 7 - Statistics 132</option>
+            <option>Essay thesis revision - English 201</option>
+          </select>
+          <label for="mode">Help type</label>
+          <select id="mode">
+            <option value="full">Plan + outline + checklist + starter template</option>
+            <option value="outline">Outline only</option>
+            <option value="checklist">Checklist only</option>
+          </select>
+          <label for="notes">Extra instructions</label>
+          <textarea id="notes" placeholder="Paste rubric notes, instructor constraints, or what you already tried."></textarea>
+          <button class="button" type="submit">Generate guided help</button>
+          <button class="button secondary" type="button" id="copy">Copy result</button>
+          <div class="copy-state" id="copyState" aria-live="polite"></div>
+        </form>
+        <article class="panel result" id="result" aria-live="polite">
+          <div class="block guard">
+            <h3>Support boundary</h3>
+            <p>The assistant prepares a plan, outline, checklist, and starter template. The student still reviews, edits, and submits in Canvas.</p>
+          </div>
+          <div class="block">
+            <h3>Plan</h3>
+            <p>Select an assignment and generate help to replace this panel with a step-by-step path.</p>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Canvas Workbench Sync",
+  "version": "0.1.0",
+  "description": "No-admin Canvas sync companion for Canvas Workbench.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://*.instructure.com/*", "http://localhost:3000/*"],
+  "action": {
+    "default_title": "Canvas Workbench Sync",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.instructure.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas Workbench</title>
+  <style>
+    :root {
+      --bg: oklch(97% 0.008 235);
+      --surface: oklch(99.5% 0.002 235);
+      --surface-2: oklch(94.5% 0.012 235);
+      --surface-raised: oklch(100% 0 0 / 0.82);
+      --fg: oklch(17.5% 0.026 238);
+      --muted: oklch(47% 0.018 238);
+      --border: oklch(87% 0.012 235);
+      --accent: oklch(55% 0.14 165);
+      --accent-ink: oklch(28% 0.09 165);
+      --success: oklch(54% 0.12 145);
+      --warn: oklch(65% 0.13 70);
+      --danger: oklch(55% 0.16 28);
+      --info: oklch(55% 0.12 245);
+      --shadow: 0 22px 70px oklch(18% 0.026 238 / 0.12);
+      --shadow-soft: 0 12px 34px oklch(18% 0.026 238 / 0.08);
+      --font-display: "Avenir Next", "Sohne", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      --font-mono: "SFMono-Regular", "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); color: var(--fg); }
+    body {
+      min-height: 100%;
+      margin: 0;
+      font: 15px/1.5 var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font: inherit; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      background:
+        linear-gradient(125deg, oklch(88% 0.05 170 / 0.36), transparent 30%),
+        linear-gradient(180deg, oklch(100% 0 0 / 0.82), oklch(95% 0.012 235)),
+        var(--bg);
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px;
+      border-right: 1px solid var(--border);
+      background:
+        linear-gradient(180deg, oklch(100% 0 0 / 0.88), oklch(95.5% 0.01 235 / 0.84));
+      backdrop-filter: blur(22px) saturate(135%);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      box-shadow: 12px 0 44px oklch(18% 0.026 238 / 0.05);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 44px;
+    }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      color: white;
+      background: linear-gradient(135deg, var(--accent), oklch(51% 0.13 205));
+      box-shadow: 0 14px 30px oklch(55% 0.14 165 / 0.24);
+    }
+    .brand-mark svg { width: 21px; height: 21px; stroke-width: 1.8; }
+    .brand h1 {
+      margin: 0;
+      font: 600 18px/1.1 var(--font-display);
+      letter-spacing: -0.01em;
+    }
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    .nav { display: grid; gap: 6px; }
+    .nav a {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: var(--muted);
+      font-weight: 520;
+      transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+    }
+    .nav a:hover { background: oklch(96% 0.012 235); color: var(--fg); transform: translateX(2px); }
+    .nav a.active {
+      background: linear-gradient(135deg, oklch(96.5% 0.018 165), oklch(98% 0.006 235));
+      color: var(--fg);
+      box-shadow: inset 0 0 0 1px oklch(82% 0.035 165), var(--shadow-soft);
+    }
+    .nav svg { width: 18px; height: 18px; stroke-width: 1.8; }
+    .sync-card {
+      margin-top: auto;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, var(--surface-raised), oklch(97% 0.006 235 / 0.78));
+      box-shadow: var(--shadow-soft);
+    }
+    .sync-card strong {
+      display: block;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+    }
+    .sync-card span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .main {
+      padding: 34px clamp(20px, 4vw, 56px) 48px;
+      min-width: 0;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent-ink);
+      font: 650 12px/1 var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .headline {
+      margin: 0;
+      max-width: 850px;
+      font: 620 clamp(34px, 5vw, 66px)/1.02 var(--font-display);
+      letter-spacing: -0.025em;
+    }
+    .subhead {
+      margin: 14px 0 0;
+      max-width: 68ch;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .date-chip {
+      flex: 0 0 auto;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font: 600 13px/1 var(--font-mono);
+      letter-spacing: 0.02em;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.75fr);
+      gap: 18px;
+      margin-top: 34px;
+      align-items: stretch;
+    }
+    .panel {
+      background: linear-gradient(180deg, var(--surface-raised), oklch(97.5% 0.006 235 / 0.84));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, oklch(100% 0 0 / 0.9), transparent);
+      pointer-events: none;
+    }
+    .today-panel { padding: clamp(20px, 3vw, 34px); }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .panel-title h2 {
+      margin: 0;
+      font: 620 22px/1.15 var(--font-display);
+      letter-spacing: -0.015em;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: oklch(96% 0.02 145);
+      color: oklch(38% 0.11 145);
+      font: 650 12px/1 var(--font-mono);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .status-pill::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--success);
+      box-shadow: 0 0 0 0 oklch(54% 0.12 145 / 0.32);
+      animation: pulse 2.2s ease-out infinite;
+    }
+    @keyframes pulse {
+      70% { box-shadow: 0 0 0 8px oklch(54% 0.12 145 / 0); }
+      100% { box-shadow: 0 0 0 0 oklch(54% 0.12 145 / 0); }
+    }
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+    .metric {
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.65);
+    }
+    .metric b {
+      display: block;
+      font: 650 30px/1 var(--font-mono);
+      letter-spacing: -0.02em;
+    }
+    .metric span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .route-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .route-card {
+      min-height: 172px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, oklch(100% 0 0 / 0.9), oklch(97% 0.006 235 / 0.82));
+      transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+    .route-card:hover {
+      transform: translateY(-2px);
+      border-color: oklch(78% 0.04 170);
+      box-shadow: 0 18px 46px oklch(18% 0.026 238 / 0.12);
+    }
+    .route-card svg {
+      width: 24px;
+      height: 24px;
+      stroke-width: 1.8;
+      color: var(--muted);
+    }
+    .route-card:hover svg { color: var(--accent-ink); }
+    .route-card h3 {
+      margin: 14px 0 6px;
+      font: 620 18px/1.2 var(--font-display);
+      letter-spacing: -0.01em;
+    }
+    .route-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      max-width: 32ch;
+    }
+    .route-card .open {
+      margin-top: 16px;
+      color: var(--accent-ink);
+      font-weight: 650;
+      font-size: 13px;
+    }
+    .report-panel {
+      padding: 22px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+    .report-panel h2 {
+      margin: 0;
+      font: 620 21px/1.2 var(--font-display);
+      letter-spacing: -0.01em;
+    }
+    .report-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 11px;
+      padding: 13px 0;
+      border-top: 1px solid var(--border);
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      margin-top: 8px;
+      border-radius: 999px;
+      background: var(--warn);
+    }
+    .dot.danger { background: var(--danger); }
+    .dot.info { background: var(--info); }
+    .report-item strong {
+      display: block;
+      font-size: 14px;
+    }
+    .report-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .primary-button {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--accent);
+      color: oklch(99% 0.002 170);
+      font-weight: 680;
+      cursor: pointer;
+      box-shadow: 0 12px 28px oklch(56% 0.12 170 / 0.22);
+      transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+    }
+    .primary-button:hover { transform: translateY(-1px); filter: saturate(1.08); box-shadow: 0 16px 34px oklch(55% 0.14 165 / 0.26); }
+    .primary-button:disabled { cursor: default; opacity: 0.74; transform: none; }
+    .primary-button svg { width: 17px; height: 17px; stroke-width: 2; }
+    .course-strip {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .course {
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, oklch(100% 0 0 / 0.78), oklch(97% 0.006 235 / 0.72));
+      box-shadow: var(--shadow-soft);
+    }
+    .course b { display: block; font-size: 14px; }
+    .course span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        padding: 16px;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .nav {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+      .nav a { white-space: nowrap; }
+      .sync-card { display: none; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .hero-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .main { padding: 24px 16px 34px; }
+      .metric-row, .route-grid, .course-strip { grid-template-columns: 1fr; }
+      .headline { font-size: clamp(32px, 11vw, 46px); }
+    }
+  </style>
+  <link rel="stylesheet" href="reference-polish.css" />
+  <script defer src="canvas-workbench.js"></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Canvas Workbench navigation">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 5.5h8.5a4.5 4.5 0 0 1 0 9H9l-4 4v-13Z"/><path d="M15 10h4"/></svg>
+        </div>
+        <div>
+          <h1>Canvas Workbench</h1>
+          <p>Assignment planning bot</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="index.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M4 12h10M4 19h7"/></svg>
+          Home
+        </a>
+        <a href="overview.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19V5"/><path d="M8 17V9"/><path d="M12 17V7"/><path d="M16 17v-5"/><path d="M20 17V4"/></svg>
+          Overview
+        </a>
+        <a href="assignments.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 4h10l2 2v14H5V6l2-2Z"/><path d="M8 10h8M8 14h8M8 18h5"/></svg>
+          Assignments
+        </a>
+        <a href="todo.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m5 12 4 4L19 6"/><path d="M4 20h16"/></svg>
+          Todo
+        </a>
+        <a href="ai-do-it.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="m5.6 5.6 2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>
+          Do it for me
+        </a>
+      </nav>
+      <div class="sync-card">
+        <strong>Canvas sync ready</strong>
+        <span>Courses, syllabi, assignments, submissions, and due dates feed the workbench.</span>
+      </div>
+    </aside>
+
+    <main class="main" data-home-dashboard>
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">Today</p>
+          <h2 class="headline">Canvas work, sorted.</h2>
+          <p class="subhead">Real Canvas deadlines, selected classes, daily report review, and assignment support in one focused workspace.</p>
+        </div>
+        <div class="date-chip">Report window: 7 days</div>
+      </div>
+
+      <section class="hero-grid" aria-label="Prototype overview">
+        <div class="panel today-panel">
+          <div class="panel-title">
+            <h2>Daily work snapshot</h2>
+            <span class="status-pill">Loading</span>
+          </div>
+          <div class="metric-row">
+            <div class="metric"><b>0</b><span>open tasks</span></div>
+            <div class="metric"><b>0</b><span>due today</span></div>
+            <div class="metric"><b>0</b><span>overdue</span></div>
+            <div class="metric"><b>0</b><span>upcoming</span></div>
+          </div>
+          <div class="bot-strip" aria-label="Canvas bot activity">
+            <div class="bot-step"><strong>Read</strong><span>Courses, syllabi, rubrics, due dates</span></div>
+            <div class="bot-step"><strong>Rank</strong><span>Late work, due today, high-point work</span></div>
+            <div class="bot-step"><strong>Plan</strong><span>Time blocks matched to the school day</span></div>
+            <div class="bot-step"><strong>Assist</strong><span>Outline, checklist, starter template</span></div>
+          </div>
+          <div class="route-grid">
+            <a class="route-card" href="overview.html">
+              <div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19V5"/><path d="M8 17V9"/><path d="M12 17V7"/><path d="M16 17v-5"/><path d="M20 17V4"/></svg>
+                <h3>Overview dashboard</h3>
+                <p>Daily report, urgency mix, syllabus mentions, and send-report action.</p>
+              </div>
+              <span class="open">Open overview</span>
+            </a>
+            <a class="route-card" href="assignments.html">
+              <div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 4h10l2 2v14H5V6l2-2Z"/><path d="M8 10h8M8 14h8M8 18h5"/></svg>
+                <h3>Assignment tab</h3>
+                <p>Filter by course, priority, status, points, due date, and submission type.</p>
+              </div>
+              <span class="open">Review assignments</span>
+            </a>
+            <a class="route-card" href="todo.html">
+              <div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m5 12 4 4L19 6"/><path d="M4 20h16"/></svg>
+                <h3>Todo list tab</h3>
+                <p>Convert Canvas tasks into time blocks with completion and deferral states.</p>
+              </div>
+              <span class="open">Plan work</span>
+            </a>
+            <a class="route-card" href="ai-do-it.html">
+              <div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="m5.6 5.6 2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>
+                <h3>AI do it for me</h3>
+                <p>Generate a guided plan, outline, checklist, and starter template.</p>
+              </div>
+              <span class="open">Generate help</span>
+            </a>
+          </div>
+        </div>
+
+        <aside class="panel report-panel" aria-label="Next report preview">
+          <div>
+            <p class="eyebrow">Report review</p>
+            <h2 id="homeReportTitle">Loading today's Canvas report</h2>
+          </div>
+          <div id="homeReportItems">
+            <div class="report-item">
+              <span class="dot info"></span>
+              <div><strong>Waiting for Canvas data</strong><span>Sync Canvas to load the real morning report.</span></div>
+            </div>
+          </div>
+          <div class="live-rail">
+            <div><span>Canvas read pass</span><span>Live</span></div>
+            <progress value="100" max="100" aria-label="Canvas read pass"></progress>
+          </div>
+          <button class="primary-button" type="button" id="sendReport">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7Z"/></svg>
+            Send daily report
+          </button>
+          <div id="reportState" aria-live="polite" style="color: var(--muted); font-size: 13px;"></div>
+        </aside>
+      </section>
+
+      <section class="course-strip" id="courseFocusList" aria-label="Focused Canvas classes">
+        <div class="course"><b>Class focus</b><span>Sync Canvas to choose which classes appear in reports and task views.</span></div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
