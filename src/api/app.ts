@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
+import multer from "multer";
 import { clearSessionCookie, clearStateCookie, readSessionCookie, readStateCookie, writeSessionCookie, writeStateCookie } from "../auth/cookies.js";
 import type { CanvasOAuthService } from "../auth/canvasOAuthService.js";
 import { CanvasClient } from "../canvas/canvasClient.js";
@@ -13,9 +14,25 @@ import type { Reporter } from "../reporters/reporter.js";
 import { AssignmentSupportService } from "../services/assignmentSupportService.js";
 import { CanvasTaskService, type CanvasSnapshot } from "../services/canvasTaskService.js";
 import { buildAssignmentTasks, buildDailyReport, type AssignmentTask, type DailyReport } from "../services/taskPlanner.js";
+import {
+  EmptySyllabusFileError,
+  extractTextFromSyllabusFile,
+  MAX_SYLLABUS_FILE_BYTES,
+  titleFromSyllabusFileName,
+  UnsupportedSyllabusFileError
+} from "../syllabi/syllabusFileExtractor.js";
 import { buildUploadedSyllabusMentions } from "../syllabi/uploadedSyllabusReferences.js";
 import { uploadedSyllabusInputSchema, type UploadedSyllabusStore } from "../syllabi/uploadedSyllabusStore.js";
 import { createRateLimiter } from "./rateLimiter.js";
+
+const uploadSyllabusFile = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_SYLLABUS_FILE_BYTES,
+    files: 1,
+    fields: 2
+  }
+}).single("file");
 
 export interface CreateAppOptions {
   env: Pick<
@@ -274,6 +291,50 @@ export function createApp(options: CreateAppOptions) {
     response.json({ success: true, data: await options.uploadedSyllabusStore.add(parsed.data) });
   }));
 
+  app.post("/api/syllabi/upload", uploadSyllabusFile, asyncHandler(async (request, response) => {
+    if (!options.uploadedSyllabusStore) {
+      throw new ApiError(501, "Syllabus uploads are not configured.", "SYLLABUS_UPLOAD_NOT_CONFIGURED");
+    }
+
+    const file = uploadedFileFromRequest(request);
+    if (!file) {
+      throw new ApiError(400, "Choose a syllabus file before saving.", "SYLLABUS_FILE_REQUIRED");
+    }
+
+    try {
+      const text = await extractTextFromSyllabusFile({
+        buffer: file.buffer,
+        mimeType: file.mimetype,
+        originalName: file.originalname
+      });
+      const parsed = uploadedSyllabusInputSchema.safeParse({
+        title: optionalFormField(request.body?.title) ?? titleFromSyllabusFileName(file.originalname),
+        courseName: optionalFormField(request.body?.courseName),
+        text
+      });
+
+      if (!parsed.success) {
+        throw new ApiError(400, "Add a title and a readable syllabus file before saving.", "INVALID_SYLLABUS");
+      }
+
+      response.json({ success: true, data: await options.uploadedSyllabusStore.add(parsed.data) });
+    } catch (error) {
+      if (error instanceof UnsupportedSyllabusFileError) {
+        throw new ApiError(
+          400,
+          "Use a PDF, DOCX, text, Markdown, HTML, CSV, or RTF syllabus file.",
+          "UNSUPPORTED_SYLLABUS_FILE"
+        );
+      }
+
+      if (error instanceof EmptySyllabusFileError) {
+        throw new ApiError(400, "That file did not contain readable syllabus text.", "EMPTY_SYLLABUS_FILE");
+      }
+
+      throw error;
+    }
+  }));
+
   app.delete("/api/syllabi/:id", asyncHandler(async (request, response) => {
     if (!options.uploadedSyllabusStore) {
       throw new ApiError(501, "Syllabus uploads are not configured.", "SYLLABUS_UPLOAD_NOT_CONFIGURED");
@@ -320,6 +381,15 @@ export function createApp(options: CreateAppOptions) {
   ));
 
   app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
+    if (isMulterFileSizeError(error)) {
+      response.status(413).json({
+        success: false,
+        error: "That upload is too large. Use a syllabus file under 10 MB.",
+        code: "UPLOAD_PAYLOAD_TOO_LARGE"
+      });
+      return;
+    }
+
     if (isPayloadTooLarge(error)) {
       response.status(413).json({
         success: false,
@@ -496,6 +566,18 @@ function firstParam(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
+function uploadedFileFromRequest(request: Request): Express.Multer.File | undefined {
+  return (request as Request & { file?: Express.Multer.File }).file;
+}
+
+function optionalFormField(value: unknown): string | undefined {
+  if (Array.isArray(value)) return optionalFormField(value[0]);
+  if (typeof value !== "string") return undefined;
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
@@ -507,6 +589,10 @@ function isPayloadTooLarge(error: unknown): boolean {
     "type" in error &&
     (error as { type?: unknown }).type === "entity.too.large"
   );
+}
+
+function isMulterFileSizeError(error: unknown): boolean {
+  return error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE";
 }
 
 function firstQueryValue(value: unknown): string | undefined {

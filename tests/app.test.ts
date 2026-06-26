@@ -455,6 +455,54 @@ describe("createApp", () => {
     ]);
   });
 
+  it("stores uploaded syllabus files through multipart upload", async () => {
+    const uploadedSyllabusStore = new MemoryUploadedSyllabusStore();
+    const app = createTestApp({ uploadedSyllabusStore });
+
+    const upload = await request(app)
+      .post("/api/syllabi/upload")
+      .field("title", "History syllabus")
+      .field("courseName", "History")
+      .attach("file", Buffer.from("Research paper due 7/8. Midterm exam on July 10."), {
+        filename: "history-syllabus.txt",
+        contentType: "text/plain"
+      })
+      .expect(200);
+    const report = await request(app).get("/api/report/daily?date=2026-06-25").expect(200);
+
+    expect(upload.body.data).toMatchObject({
+      title: "History syllabus",
+      courseName: "History"
+    });
+    expect(report.body.data.sections.syllabusMentions).toEqual([
+      expect.objectContaining({
+        courseName: "History",
+        text: "History syllabus: Research paper due 7/8."
+      }),
+      expect.objectContaining({
+        courseName: "History",
+        text: "History syllabus: Midterm exam on July 10."
+      })
+    ]);
+  });
+
+  it("rejects unsupported syllabus file uploads", async () => {
+    const app = createTestApp({
+      uploadedSyllabusStore: new MemoryUploadedSyllabusStore()
+    });
+
+    const response = await request(app)
+      .post("/api/syllabi/upload")
+      .field("title", "Bad file")
+      .attach("file", Buffer.from("not a syllabus"), {
+        filename: "syllabus.exe",
+        contentType: "application/octet-stream"
+      })
+      .expect(400);
+
+    expect(response.body.code).toBe("UNSUPPORTED_SYLLABUS_FILE");
+  });
+
   it("rejects invalid uploaded syllabi", async () => {
     const app = createTestApp({
       uploadedSyllabusStore: new MemoryUploadedSyllabusStore()

@@ -227,23 +227,24 @@
       <section class="grid overview-panel" data-overview-panel="syllabi" hidden>
         <div class="panel span-8">
           <h3>Upload syllabi</h3>
-          <p class="lead">Add pasted syllabus text or a text, Markdown, or HTML syllabus file. The app will reference it when building reports.</p>
+          <p class="lead">Upload a syllabus file or paste syllabus text. The app will reference it when building reports.</p>
           <form class="syllabus-upload" id="syllabusUpload">
             <label>
               <span>Title</span>
-              <input id="syllabusTitle" name="title" type="text" placeholder="Biology syllabus" autocomplete="off" required />
+              <input id="syllabusTitle" name="title" type="text" placeholder="Biology syllabus" autocomplete="off" />
             </label>
             <label>
               <span>Class</span>
               <input id="syllabusCourse" name="courseName" type="text" placeholder="Biology 104" autocomplete="off" />
             </label>
             <label class="wide">
-              <span>File</span>
-              <input id="syllabusFile" type="file" accept=".txt,.md,.markdown,.html,.htm,text/plain,text/markdown,text/html" />
+              <span>Upload file</span>
+              <input id="syllabusFile" type="file" accept=".pdf,.docx,.txt,.md,.markdown,.html,.htm,.csv,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/html,text/csv" />
             </label>
+            <div class="upload-divider wide"><span>or paste text</span></div>
             <label class="wide">
               <span>Syllabus text</span>
-              <textarea id="syllabusText" name="text" rows="10" placeholder="Paste syllabus text here..." required></textarea>
+              <textarea id="syllabusText" name="text" rows="10" placeholder="Paste syllabus text here..."></textarea>
             </label>
             <div class="upload-actions">
               <button class="button" type="submit">Save syllabus</button>

@@ -2,10 +2,7 @@
   const api = {
     async get(path) {
       const response = await fetch(path, { headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-      const body = await response.json();
-      if (!body.success) throw new Error(body.error || "Request failed");
-      return body.data;
+      return parseApiResponse(response);
     },
     async post(path, payload) {
       const response = await fetch(path, {
@@ -13,17 +10,19 @@
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify(payload || {})
       });
-      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-      const body = await response.json();
-      if (!body.success) throw new Error(body.error || "Request failed");
-      return body.data;
+      return parseApiResponse(response);
+    },
+    async upload(path, formData) {
+      const response = await fetch(path, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: formData
+      });
+      return parseApiResponse(response);
     },
     async delete(path) {
       const response = await fetch(path, { method: "DELETE", headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-      const body = await response.json();
-      if (!body.success) throw new Error(body.error || "Request failed");
-      return body.data;
+      return parseApiResponse(response);
     }
   };
 
@@ -300,17 +299,9 @@
       fileInput.addEventListener("change", async () => {
         const file = fileInput.files?.[0];
         if (!file) return;
-        setText(document.querySelector("#syllabusState"), "Reading syllabus file...");
-        try {
-          const text = await file.text();
-          const title = document.querySelector("#syllabusTitle");
-          const textarea = document.querySelector("#syllabusText");
-          if (title && !title.value) title.value = file.name.replace(/\.[^.]+$/, "");
-          if (textarea) textarea.value = text;
-          setText(document.querySelector("#syllabusState"), "File loaded. Review the text, then save.");
-        } catch (error) {
-          setText(document.querySelector("#syllabusState"), "Could not read that file. Paste the syllabus text instead.");
-        }
+        const title = document.querySelector("#syllabusTitle");
+        if (title && !title.value) title.value = file.name.replace(/\.[^.]+$/, "");
+        setText(document.querySelector("#syllabusState"), `${file.name} selected. Save to extract syllabus text.`);
       });
     }
 
@@ -321,17 +312,26 @@
         const title = document.querySelector("#syllabusTitle")?.value?.trim() || "";
         const courseName = document.querySelector("#syllabusCourse")?.value?.trim() || undefined;
         const text = document.querySelector("#syllabusText")?.value?.trim() || "";
+        const file = document.querySelector("#syllabusFile")?.files?.[0];
         setText(document.querySelector("#syllabusState"), "Saving syllabus...");
 
         try {
-          await api.post("/api/syllabi", { title, courseName, text });
+          if (file) {
+            const formData = new FormData();
+            formData.append("file", file);
+            if (title) formData.append("title", title);
+            if (courseName) formData.append("courseName", courseName);
+            await api.upload("/api/syllabi/upload", formData);
+          } else {
+            await api.post("/api/syllabi", { title: title || "Pasted syllabus", courseName, text });
+          }
           form.reset();
           setText(document.querySelector("#syllabusState"), "Syllabus saved and available to reports.");
           await renderUploadedSyllabi();
           await hydrateOverview();
           await hydrateCalendar();
         } catch (error) {
-          setText(document.querySelector("#syllabusState"), "Add a title and syllabus text before saving.");
+          setText(document.querySelector("#syllabusState"), error.message || "Choose a syllabus file or paste syllabus text before saving.");
         }
       });
     }
@@ -769,6 +769,14 @@
 
   function saveFocusedCourseIds(ids) {
     localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify([...new Set(ids)]));
+  }
+
+  async function parseApiResponse(response) {
+    const body = await response.json().catch(() => undefined);
+    if (!response.ok || !body?.success) {
+      throw new Error(body?.error || `Request failed: ${response.status}`);
+    }
+    return body.data;
   }
 
   function setText(element, value) {
