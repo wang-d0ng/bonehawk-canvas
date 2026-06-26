@@ -257,6 +257,7 @@ svg {
 .nav a,
 .nav button {
   width: 100%;
+  height: 36px !important;
   min-height: 36px !important;
   display: grid !important;
   grid-template-columns: 22px minmax(0, 1fr) !important;
@@ -293,23 +294,31 @@ svg {
 
 .nav svg {
   width: 18px !important;
+  min-width: 18px !important;
   height: 18px !important;
+  min-height: 18px !important;
   display: grid !important;
   place-items: center;
   padding: 2px;
+  box-sizing: border-box;
   border: 1px solid var(--line);
   color: var(--muted);
+  flex: 0 0 18px;
 }
 
 .nav-glyph {
-  width: 18px;
-  height: 18px;
+  width: 18px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  min-height: 18px !important;
   display: grid;
   place-items: center;
+  box-sizing: border-box;
   border: 1px solid var(--line);
   color: var(--muted);
   font: 850 9px/1 var(--font-mono);
   letter-spacing: 0;
+  flex: 0 0 18px;
 }
 
 .nav a.active svg,
@@ -1328,6 +1337,7 @@ pre,
 
   .nav a,
   .nav button {
+    height: 36px !important;
     grid-template-columns: 1fr !important;
     justify-items: center;
     padding: 0 !important;
@@ -1336,8 +1346,11 @@ pre,
   .nav svg,
   .nav-glyph {
     width: 28px !important;
+    min-width: 28px !important;
     height: 28px !important;
+    min-height: 28px !important;
     font-size: 10px;
+    flex-basis: 28px;
   }
 
   .metric-row,
@@ -1420,9 +1433,19 @@ pre,
   .nav a,
   .nav button {
     width: auto;
+    height: 36px !important;
     min-width: max-content;
     grid-template-columns: 22px minmax(0, 1fr) !important;
     padding: 0 9px !important;
+  }
+
+  .nav svg,
+  .nav-glyph {
+    width: 18px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    flex-basis: 18px;
   }
 
   .main {
