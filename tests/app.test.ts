@@ -194,6 +194,61 @@ describe("createApp", () => {
     expect(report.body.data.summary.dueToday).toBe(1);
   });
 
+  it("hides completed imported assignments from task and dashboard surfaces", async () => {
+    const importedCanvasStore = new MemoryImportedCanvasStore();
+    await importedCanvasStore.set(importSnapshot({
+      assignmentsByCourse: {
+        "42": [
+          {
+            id: 100,
+            course_id: 42,
+            name: "Imported Lab",
+            description: "<p>Submit a lab reflection.</p>",
+            due_at: "2026-06-25T20:00:00+09:00",
+            points_possible: 20,
+            submission_types: ["online_upload"]
+          },
+          {
+            id: 101,
+            course_id: 42,
+            name: "Completed Quiz",
+            description: "<p>Already submitted.</p>",
+            due_at: "2026-06-25T19:00:00+09:00",
+            points_possible: 10,
+            submission_types: ["online_quiz"],
+            has_submitted_submissions: true,
+            submission: {
+              submitted_at: "2026-06-25T10:00:00+09:00",
+              workflow_state: "submitted"
+            }
+          }
+        ]
+      }
+    }));
+    const app = createTestApp({
+      env: {
+        ALLOWED_ORIGINS: "http://localhost:5173",
+        RATE_LIMIT_WINDOW_MS: 60_000,
+        RATE_LIMIT_MAX_REQUESTS: 100,
+        CANVAS_BASE_URL: "https://school.instructure.com",
+        OAUTH_STATE_SECRET: "test-cookie-secret-that-is-at-least-thirty-two"
+      },
+      importedCanvasStore
+    });
+
+    const tasks = await request(app).get("/api/tasks").expect(200);
+    const focusedTasks = await request(app).get("/api/tasks?courseIds=42").expect(200);
+    const dashboard = await request(app).get("/api/dashboard?date=2026-06-25").expect(200);
+
+    expect(tasks.body.data.map((task: { title: string }) => task.title)).toEqual(["Imported Lab"]);
+    expect(focusedTasks.body.data.map((task: { title: string }) => task.title)).toEqual(["Imported Lab"]);
+    expect(dashboard.body.data.courseSummaries[0]).toMatchObject({
+      totalTasks: 1,
+      openTasks: 1,
+      dueToday: 1
+    });
+  });
+
   it("filters imported Canvas data to selected focus courses", async () => {
     const importedCanvasStore = new MemoryImportedCanvasStore();
     await importedCanvasStore.set(importSnapshot({
@@ -373,6 +428,26 @@ describe("createApp", () => {
     const response = await request(app).get("/api/tasks").expect(200);
 
     expect(response.body.data[0].title).toBe("Lab");
+  });
+
+  it("does not list completed normalized tasks", async () => {
+    const app = createTestApp({
+      taskService: {
+        loadSnapshot: async () => ({
+          courses: [{ id: 1, name: "Biology" }],
+          assignmentsByCourse: new Map()
+        }),
+        listTasks: async () => [
+          { id: "1:2", title: "Lab", status: "due_today" },
+          { id: "1:3", title: "Submitted Quiz", status: "completed" }
+        ],
+        buildDailyReport: async () => dailyReport()
+      } as never
+    });
+
+    const response = await request(app).get("/api/tasks").expect(200);
+
+    expect(response.body.data.map((task: { title: string }) => task.title)).toEqual(["Lab"]);
   });
 
   it("sends the daily report through the configured reporter", async () => {

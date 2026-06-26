@@ -301,7 +301,19 @@ svg {
   color: var(--muted);
 }
 
-.nav a.active svg {
+.nav-glyph {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font: 850 9px/1 var(--font-mono);
+  letter-spacing: 0;
+}
+
+.nav a.active svg,
+.nav a.active .nav-glyph {
   border-color: var(--green);
   color: var(--green);
 }
@@ -335,7 +347,11 @@ svg {
 .course-strip,
 .grid,
 .layout,
-.helper {
+.helper,
+.columns,
+.workspace,
+.toolbar,
+.main > .bot-strip {
   margin: 20px 22px 0 !important;
 }
 
@@ -346,8 +362,31 @@ svg {
 
 .grid,
 .layout,
-.helper {
+.helper,
+.columns,
+.workspace {
   gap: 12px !important;
+}
+
+.toolbar {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 12px !important;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(5, 6, 7, 0.38);
+}
+
+.columns {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.56fr) !important;
+}
+
+.workspace {
+  display: grid !important;
+  grid-template-columns: minmax(320px, 0.62fr) minmax(0, 1fr) !important;
 }
 
 .headline,
@@ -1021,7 +1060,8 @@ pre,
     padding: 0 !important;
   }
 
-  .nav svg {
+  .nav svg,
+  .nav-glyph {
     width: 28px !important;
     height: 28px !important;
     font-size: 10px;
@@ -1036,7 +1076,9 @@ pre,
   .hero-grid,
   .layout,
   .helper,
-  .grid {
+  .grid,
+  .columns,
+  .workspace {
     grid-template-columns: 1fr !important;
   }
 
@@ -1127,7 +1169,11 @@ pre,
   .course-strip,
   .grid,
   .layout,
-  .helper {
+  .helper,
+  .columns,
+  .workspace,
+  .toolbar,
+  .main > .bot-strip {
     margin: 16px !important;
   }
 

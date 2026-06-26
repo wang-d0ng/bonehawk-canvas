@@ -178,12 +178,12 @@ export function createApp(options: CreateAppOptions) {
     const { taskService } = createRequestServices(request, options);
     const focusedCourseIds = parseCourseIds(request.query.courseIds);
     if (!focusedCourseIds) {
-      response.json({ success: true, data: await taskService.listTasks(now()) });
+      response.json({ success: true, data: visibleTasks(await taskService.listTasks(now())) });
       return;
     }
 
     const snapshot = filterSnapshotByCourseIds(await taskService.loadSnapshot(), focusedCourseIds);
-    const tasks = buildAssignmentTasks(snapshot.courses, snapshot.assignmentsByCourse, now());
+    const tasks = visibleTasks(buildAssignmentTasks(snapshot.courses, snapshot.assignmentsByCourse, now()));
     response.json({ success: true, data: tasks });
   }));
 
@@ -208,7 +208,7 @@ export function createApp(options: CreateAppOptions) {
     const fullSnapshot = await taskService.loadSnapshot();
     const focusedSnapshot = filterSnapshotByCourseIds(fullSnapshot, focusedCourseIds);
     const report = buildDailyReportFromSnapshot(focusedSnapshot, reportDate);
-    const tasks = buildAssignmentTasks(focusedSnapshot.courses, focusedSnapshot.assignmentsByCourse, reportDate);
+    const tasks = visibleTasks(buildAssignmentTasks(focusedSnapshot.courses, focusedSnapshot.assignmentsByCourse, reportDate));
 
     response.json({
       success: true,
@@ -374,6 +374,10 @@ function buildCourseSummaries(
       focused: true
     };
   });
+}
+
+function visibleTasks<T extends { status?: string }>(tasks: T[]): T[] {
+  return tasks.filter((task) => task.status !== "completed");
 }
 
 function parseAssignmentParams(request: Request): { courseId: number; assignmentId: number } {
